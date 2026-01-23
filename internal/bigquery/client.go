@@ -224,7 +224,6 @@ type Client struct {
 	projectID string
 	datasetID string
 	tableID   string
-	mu        sync.RWMutex
 }
 
 // NewClient creates a new BigQuery client
@@ -539,8 +538,7 @@ func (c *Client) buildFailureQuery(query shared.BuildFailureQuery) (string, map[
 
 	// Base query using shared builder
 	qb := c.newQueryBuilder()
-	baseQuery := fmt.Sprintf("%s\n%s\nWHERE 1=1", qb.baseSelectClause(), qb.fromClause())
-	sqlQuery := baseQuery
+	sqlQuery := fmt.Sprintf("%s\n%s\nWHERE 1=1", qb.baseSelectClause(), qb.fromClause())
 
 	// Time filter
 	startDate := time.Now().AddDate(0, 0, -query.Days)
@@ -585,7 +583,7 @@ func (c *Client) buildFailureQuery(query shared.BuildFailureQuery) (string, map[
 
 	// Build query efficiently using string builder
 	var builder strings.Builder
-	builder.WriteString(baseQuery)
+	builder.WriteString(sqlQuery)
 
 	// Add all conditions
 	for _, condition := range conditions {

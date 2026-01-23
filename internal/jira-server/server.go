@@ -8,6 +8,9 @@ import (
 	"regexp"
 	"strings"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
 	"github.com/lgarciaaco/claude-build-analyzer/internal/jira"
 	"github.com/lgarciaaco/claude-build-analyzer/pkg/shared"
 )
@@ -248,7 +251,6 @@ func (s *Server) GetToolList() shared.ToolList {
 	}
 }
 
-
 // getIssue retrieves detailed issue information
 func (s *Server) getIssue(ctx context.Context, args map[string]interface{}) (shared.ToolResult, error) {
 	// Parse arguments
@@ -256,12 +258,12 @@ func (s *Server) getIssue(ctx context.Context, args map[string]interface{}) (sha
 	if !ok || issueKey == "" {
 		return shared.ToolResult{}, fmt.Errorf("issueKey is required")
 	}
-	
+
 	includeSecurityAnalysis := true
 	if val, ok := args["includeSecurityAnalysis"].(bool); ok {
 		includeSecurityAnalysis = val
 	}
-	
+
 	includeBuildImpact := true
 	if val, ok := args["includeBuildImpact"].(bool); ok {
 		includeBuildImpact = val
@@ -525,9 +527,10 @@ func (s *Server) extractBuildSystemsFromText(text string) []string {
 	systems := []string{"konflux", "osbs", "brew", "jenkins", "tekton", "pipeline"}
 
 	var found []string
+	caser := cases.Title(language.Und)
 	for _, system := range systems {
 		if strings.Contains(text, system) {
-			found = append(found, strings.Title(system))
+			found = append(found, caser.String(system))
 		}
 	}
 

@@ -97,7 +97,7 @@ func TestServer_compareBuilds_InvalidArgs(t *testing.T) {
 		"buildId2": "build2",
 	}
 
-	buildID1, ok1 := args["buildId1"].(string)
+	_, ok1 := args["buildId1"].(string)
 	buildID2, ok2 := args["buildId2"].(string)
 
 	if ok1 {
@@ -113,7 +113,7 @@ func TestServer_compareBuilds_InvalidArgs(t *testing.T) {
 		"buildId1": "build1",
 	}
 
-	buildID1, ok1 = args["buildId1"].(string)
+	buildID1, ok1 := args["buildId1"].(string)
 	_, ok2 = args["buildId2"].(string)
 
 	if !ok1 || buildID1 != "build1" {
