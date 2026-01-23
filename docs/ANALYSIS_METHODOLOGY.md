@@ -1,6 +1,6 @@
 # Build Failure Analysis Methodology
 
-This guide provides a systematic, evidence-based approach for analyzing OpenShift Container Platform build failures using the dual MCP server system.
+This guide provides a systematic, evidence-based approach for analyzing OpenShift Container Platform build failures using the tri-server MCP system.
 
 ## Core Principles
 
@@ -24,6 +24,8 @@ This mandatory order ensures:
 - **Performance**: 2-5x faster metadata validation (0.5-2s) before expensive BigQuery (1-5s)
 - **Cost Control**: Avoid failed BigQuery operations on invalid component names  
 - **Logic Flow**: Understand component configuration before analyzing build failures
+
+**Optional Jenkins Context**: Use Jenkins Server tools when specific job numbers are mentioned or build execution context is needed.
 
 ### Step 1: Component Identification (OCP Metadata Server)
 
@@ -51,7 +53,20 @@ mcp__ocp-metadata__get_component_metadata(componentName="validated_name", versio
 - Core services: `oauth-server`, `openshift-apiserver`
 - Infrastructure: `cluster-*`, `machine-*`
 
-### Step 2: Build Failure Pattern Analysis (Build Analyzer Server)
+### Step 2: Jenkins Context (Optional - Jenkins Server)
+
+**Use when**:
+- User mentions specific Jenkins job numbers
+- Need build execution parameters (BUILD_VERSION, ASSEMBLY)
+- Want console log context beyond BigQuery data
+
+```bash
+# Extract build parameters from Jenkins jobs
+mcp__jenkins-server__analyze_jenkins_logs(buildNumber=24021)
+# Extract BUILD_VERSION and ASSEMBLY for subsequent BigQuery calls
+```
+
+### Step 3: Build Failure Pattern Analysis (Build Analyzer Server)
 
 **ONLY after Step 1 metadata validation** - now query the expensive BigQuery database:
 
@@ -73,7 +88,7 @@ mcp__build-analyzer__query_build_failures(
 - **Timing correlation**: When did failures start/cluster
 - **Assembly context**: Stream vs test vs standard builds
 
-### Step 3: Configuration Analysis 
+### Step 4: Configuration Analysis 
 
 **Already completed in Step 1** - metadata was retrieved during component validation.
 
@@ -106,12 +121,13 @@ User Query Analysis
 |-----------|--------|------|------|
 | search_components | Metadata | 0.5-2s | Local Git (free) |
 | get_component_metadata | Metadata | 0.5-2s | Local Git (free) |
+| analyze_jenkins_logs | Jenkins | 1-3s | Jenkins API (free) |
 | query_build_failures | Build Analyzer | 1-5s | BigQuery compute |
 | analyze_build_logs | Build Analyzer | 2-10s | BigQuery compute |
 
 **Total optimal analysis time**: 5-20 seconds following metadata-first protocol
 
-### Step 4: Build Log Investigation
+### Step 5: Build Log Investigation
 
 **CRITICAL**: This step is mandatory for conclusions
 ```
@@ -121,7 +137,7 @@ build-analyzer → analyze_build_logs(componentName="component", group="4.21", a
 **If this fails**: Report "Analysis failed - unable to retrieve build logs due to MCP server error"
 **If successful**: Extract specific error patterns, pipeline URLs, failure context
 
-### Step 5: Evidence Correlation
+### Step 6: Evidence Correlation
 
 **Data correlation approach**:
 - **Timing**: Do metadata changes align with failure start times?
@@ -219,6 +235,20 @@ build-analyzer → analyze_build_logs(componentName="component", group="4.21", a
 **get_component_metadata**:
 - **Use for**: Configuration analysis, dependency review
 - **Best for**: Understanding component setup and recent changes
+
+### Jenkins Server Tools
+
+**query_jenkins_builds**:
+- **Use for**: Finding Konflux builds in Jenkins, filtering by status/time
+- **Best for**: Locating specific build jobs and parameters
+
+**analyze_jenkins_logs**:
+- **Use for**: Extracting build parameters, console log analysis
+- **Best for**: Getting BUILD_VERSION/ASSEMBLY for accurate BigQuery correlation
+
+**correlate_jenkins_builds**:
+- **Use for**: Linking Jenkins execution with BigQuery build records
+- **Best for**: Cross-referencing Jenkins and BigQuery data
 
 ## Response Structure Template
 
