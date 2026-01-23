@@ -754,21 +754,6 @@ func (s *Server) deduplicateFailures(failures []ComponentFailure) []ComponentFai
 	return result
 }
 
-// deduplicateLinks removes duplicate Konflux links (legacy method)
-func (s *Server) deduplicateLinks(links []KonfluxLink) []KonfluxLink {
-	seen := make(map[string]bool)
-	var result []KonfluxLink
-
-	for _, link := range links {
-		if !seen[link.URL] {
-			seen[link.URL] = true
-			result = append(result, link)
-		}
-	}
-
-	return result
-}
-
 // deduplicateLinksLatestPerComponent groups by component and keeps only latest build per component
 func (s *Server) deduplicateLinksLatestPerComponent(links []KonfluxLink) []KonfluxLink {
 	if len(links) == 0 {
@@ -814,55 +799,6 @@ func max(a, b int) int {
 		return a
 	}
 	return b
-}
-
-// debugURLExtraction provides debugging info about URL extraction from logs
-func (s *Server) debugURLExtraction(logs string) map[string]interface{} {
-	// Find all HTTP URLs in the logs
-	allURLPattern := regexp.MustCompile(`(https://[^\s\]]+)`)
-	allMatches := allURLPattern.FindAllString(logs, -1)
-
-	// Group URLs by domain
-	domainCounts := make(map[string]int)
-	var konfluxURLs []string
-	var otherURLs []string
-
-	for _, url := range allMatches {
-		if strings.Contains(url, "konflux") {
-			konfluxURLs = append(konfluxURLs, url)
-		} else {
-			otherURLs = append(otherURLs, url)
-		}
-
-		// Extract domain for counting
-		if domainStart := strings.Index(url, "://"); domainStart >= 0 {
-			domainPart := url[domainStart+3:]
-			if domainEnd := strings.Index(domainPart, "/"); domainEnd >= 0 {
-				domain := domainPart[:domainEnd]
-				domainCounts[domain]++
-			} else {
-				domainCounts[domainPart]++
-			}
-		}
-	}
-
-	// Limit output to prevent token overflow
-	maxURLs := 10
-	if len(konfluxURLs) > maxURLs {
-		konfluxURLs = konfluxURLs[:maxURLs]
-	}
-	if len(otherURLs) > maxURLs {
-		otherURLs = otherURLs[:maxURLs]
-	}
-
-	return map[string]interface{}{
-		"totalURLsFound":   len(allMatches),
-		"konfluxURLsFound": len(konfluxURLs),
-		"konfluxURLs":      konfluxURLs,
-		"otherURLsFound":   len(otherURLs),
-		"otherURLs":        otherURLs[:min(5, len(otherURLs))], // Limit other URLs more
-		"domainCounts":     domainCounts,
-	}
 }
 
 // openBrowserLinks handles the open_browser_links tool

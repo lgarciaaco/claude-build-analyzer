@@ -15,14 +15,6 @@ import (
 	"github.com/lgarciaaco/claude-build-analyzer/pkg/shared"
 )
 
-// minInt returns the minimum of two integers
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 // Manager handles git repository operations for multiple OpenShift versions
 type Manager struct {
 	repoURL       string
@@ -264,12 +256,15 @@ func (m *Manager) ListFiles(branch, dirPath string) ([]string, error) {
 
 	// If dirPath is empty, list root directory
 	if dirPath == "" {
-		tree.Files().ForEach(func(f *object.File) error {
+		err := tree.Files().ForEach(func(f *object.File) error {
 			if !strings.Contains(f.Name, "/") {
 				files = append(files, f.Name)
 			}
 			return nil
 		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to iterate root files: %w", err)
+		}
 		return files, nil
 	}
 
@@ -281,7 +276,7 @@ func (m *Manager) ListFiles(branch, dirPath string) ([]string, error) {
 	}
 
 	// List files in subdirectory
-	subTree.Files().ForEach(func(f *object.File) error {
+	err = subTree.Files().ForEach(func(f *object.File) error {
 		// Remove directory prefix and only include direct files
 		name := strings.TrimPrefix(f.Name, dirPath+"/")
 		if !strings.Contains(name, "/") {
@@ -289,6 +284,9 @@ func (m *Manager) ListFiles(branch, dirPath string) ([]string, error) {
 		}
 		return nil
 	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to iterate subdirectory files: %w", err)
+	}
 
 	return files, nil
 }

@@ -329,9 +329,7 @@ func extractCVEs(issue *Issue) []string {
 	cvePattern := `CVE-\d{4}-\d{4,7}`
 	matches := findMatches(text, cvePattern)
 
-	for _, match := range matches {
-		cves = append(cves, match)
-	}
+	cves = append(cves, matches...)
 
 	return removeDuplicates(cves)
 }
