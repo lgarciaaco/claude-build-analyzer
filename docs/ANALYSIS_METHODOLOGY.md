@@ -1,6 +1,6 @@
 # Build Failure Analysis Methodology
 
-This guide provides a systematic, evidence-based approach for analyzing OpenShift Container Platform build failures using the tri-server MCP system.
+This guide provides a systematic, evidence-based approach for analyzing OpenShift Container Platform build failures using the quad-server MCP system.
 
 ## Core Principles
 
@@ -66,7 +66,26 @@ mcp__jenkins-server__analyze_jenkins_logs(buildNumber=24021)
 # Extract BUILD_VERSION and ASSEMBLY for subsequent BigQuery calls
 ```
 
-### Step 3: Build Failure Pattern Analysis (Build Analyzer Server)
+### Step 3: JIRA Context (Optional - JIRA Server)
+
+**Use when**:
+- Jenkins logs contain OCPBUGS ticket references (e.g., OCPBUGS-12345)
+- CVE identifiers found in build failure context  
+- Security-related build failures requiring impact analysis
+- Need to correlate build issues with existing bug reports
+
+```bash
+# Get detailed issue information with security analysis
+mcp__jira-server__get_issue(issueKey="OCPBUGS-12345", includeSecurityAnalysis=true)
+
+# Search for CVE-related issues
+mcp__jira-server__search_issues(cve="CVE-2025-9714", maxResults=10)
+
+# Analyze security impact
+mcp__jira-server__analyze_security_impact(issueKey="OCPBUGS-12345")
+```
+
+### Step 4: Build Failure Pattern Analysis (Build Analyzer Server)
 
 **ONLY after Step 1 metadata validation** - now query the expensive BigQuery database:
 
@@ -88,7 +107,7 @@ mcp__build-analyzer__query_build_failures(
 - **Timing correlation**: When did failures start/cluster
 - **Assembly context**: Stream vs test vs standard builds
 
-### Step 4: Configuration Analysis 
+### Step 5: Configuration Analysis 
 
 **Already completed in Step 1** - metadata was retrieved during component validation.
 
@@ -122,12 +141,14 @@ User Query Analysis
 | search_components | Metadata | 0.5-2s | Local Git (free) |
 | get_component_metadata | Metadata | 0.5-2s | Local Git (free) |
 | analyze_jenkins_logs | Jenkins | 1-3s | Jenkins API (free) |
+| get_issue | JIRA | 1-3s | JIRA API (free) |
+| search_issues | JIRA | 1-3s | JIRA API (free) |
 | query_build_failures | Build Analyzer | 1-5s | BigQuery compute |
 | analyze_build_logs | Build Analyzer | 2-10s | BigQuery compute |
 
 **Total optimal analysis time**: 5-20 seconds following metadata-first protocol
 
-### Step 5: Build Log Investigation
+### Step 6: Build Log Investigation
 
 **CRITICAL**: This step is mandatory for conclusions
 ```
@@ -137,7 +158,7 @@ build-analyzer → analyze_build_logs(componentName="component", group="4.21", a
 **If this fails**: Report "Analysis failed - unable to retrieve build logs due to MCP server error"
 **If successful**: Extract specific error patterns, pipeline URLs, failure context
 
-### Step 6: Evidence Correlation
+### Step 7: Evidence Correlation
 
 **Data correlation approach**:
 - **Timing**: Do metadata changes align with failure start times?
@@ -250,6 +271,24 @@ build-analyzer → analyze_build_logs(componentName="component", group="4.21", a
 - **Use for**: Linking Jenkins execution with BigQuery build records
 - **Best for**: Cross-referencing Jenkins and BigQuery data
 
+### JIRA Server Tools
+
+**get_issue**:
+- **Use for**: Retrieving detailed OCPBUGS ticket information with security analysis
+- **Best for**: Understanding specific issues referenced in Jenkins logs
+
+**search_issues**:
+- **Use for**: Finding issues by CVE, component, or custom JQL queries
+- **Best for**: Correlating build failures with known security issues
+
+**get_issue_comments**:
+- **Use for**: Analyzing issue progression and technical insights from comments
+- **Best for**: Understanding resolution status and technical details
+
+**analyze_security_impact**:
+- **Use for**: Comprehensive security impact assessment for CVE-related issues
+- **Best for**: Understanding scope of security vulnerabilities affecting builds
+
 ## Response Structure Template
 
 ```
@@ -257,9 +296,10 @@ Build Failure Analysis for [N] Components (Assembly: [stream/test/standard]):
 
 ## Component: [name]
 - **Failure Pattern**: [Data-driven description from build failures]
-- **Evidence**: [Specific findings from build logs and metadata]
-- **Root Cause**: [Conclusion based on evidence correlation]
-- **Recommendation**: [Actionable next steps]
+- **JIRA Context**: [Related OCPBUGS tickets, CVE mappings if applicable]
+- **Evidence**: [Specific findings from build logs, metadata, and JIRA analysis]
+- **Root Cause**: [Conclusion based on evidence correlation across all sources]
+- **Recommendation**: [Actionable next steps including JIRA ticket creation if needed]
 
 ## Component: [next]
 [Same structure]
@@ -277,6 +317,8 @@ Build Failure Analysis for [N] Components (Assembly: [stream/test/standard]):
 - **If query_build_failures fails**: "Unable to retrieve build failure data due to server error"
 - **If analyze_build_logs fails**: "Analysis failed - unable to retrieve build logs due to MCP server error"
 - **If get_component_metadata fails**: "Unable to retrieve component configuration"
+- **If get_issue fails**: "Unable to retrieve JIRA issue data"
+- **If search_issues fails**: "JIRA search failed due to server error or permissions"
 
 ### Partial Data Scenarios
 - **Some tools succeed**: Provide analysis based on available data, note limitations
@@ -295,6 +337,9 @@ Build Failure Analysis for [N] Components (Assembly: [stream/test/standard]):
 - [ ] All component names validated via search or metadata lookup
 - [ ] Assembly parameter correctly interpreted and applied
 - [ ] Build logs successfully retrieved and analyzed
+- [ ] JIRA context retrieved when issue references found in logs
+- [ ] Security impact assessed for CVE-related issues
 - [ ] Timing correlation performed between failures and changes
 - [ ] Architecture-specific patterns identified where relevant
+- [ ] Cross-source evidence correlation completed (metadata + Jenkins + JIRA + BigQuery)
 - [ ] Recommendations are specific and actionable

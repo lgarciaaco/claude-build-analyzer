@@ -247,7 +247,7 @@ func (s *Server) analyzeBuildLogs(ctx context.Context, args map[string]interface
 	} else {
 		// Extract failed container logs
 		failedContainers = s.bqClient.ExtractFailedContainerLogs(taskRuns)
-		
+
 		// Analyze container logs for error patterns
 		if len(failedContainers) > 0 {
 			errorSummary = s.bqClient.AnalyzeContainerLogs(failedContainers)

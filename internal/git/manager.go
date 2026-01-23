@@ -306,13 +306,13 @@ func (m *Manager) UpdateAllBranches() error {
 	// Get repository count and create slice of branch-repo pairs to avoid copying
 	m.mu.RLock()
 	repoCount := len(m.repositories)
-	repoPairs := make([]struct{
+	repoPairs := make([]struct {
 		branch string
 		repo   *git.Repository
 	}, 0, repoCount)
-	
+
 	for branch, repo := range m.repositories {
-		repoPairs = append(repoPairs, struct{
+		repoPairs = append(repoPairs, struct {
 			branch string
 			repo   *git.Repository
 		}{branch, repo})
@@ -494,7 +494,7 @@ func (r *repositoryImpl) GetCommitHistory(path string, limit int) ([]shared.Comm
 		if count >= limit {
 			return fmt.Errorf("limit reached")
 		}
-		
+
 		commits = append(commits, shared.Commit{
 			Hash:    c.Hash.String(),
 			Author:  c.Author.Name,
@@ -505,7 +505,7 @@ func (r *repositoryImpl) GetCommitHistory(path string, limit int) ([]shared.Comm
 		count++
 		return nil
 	})
-	
+
 	if err != nil && err.Error() != "limit reached" {
 		return nil, fmt.Errorf("failed to iterate commits: %w", err)
 	}

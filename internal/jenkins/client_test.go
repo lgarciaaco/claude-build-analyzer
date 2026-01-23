@@ -191,7 +191,7 @@ func TestClient_convertToKonfluxJob_Defaults(t *testing.T) {
 		Result:    "SUCCESS",
 		Timestamp: 1640995200000,
 		Duration:  180000, // 3 minutes
-		Actions:   []struct {
+		Actions: []struct {
 			Parameters []struct {
 				Name  string      `json:"name"`
 				Value interface{} `json:"value"`
@@ -289,7 +289,7 @@ func TestClient_AnalyzeJenkinsLogs(t *testing.T) {
 
 func TestClient_Close(t *testing.T) {
 	client := NewClient("https://jenkins.example.com", nil)
-	
+
 	err := client.Close()
 	if err != nil {
 		t.Errorf("Expected no error on close, got %v", err)
@@ -345,9 +345,9 @@ func TestClient_convertToKonfluxJob_MixedParameterTypes(t *testing.T) {
 				}{
 					{Name: "component", Value: "oauth-server"},
 					{Name: "assembly", Value: "stream"},
-					{Name: "hermetic", Value: true},        // boolean parameter
-					{Name: "timeout", Value: 3600.0},       // float64 parameter
-					{Name: "retry_count", Value: int(3)},   // int parameter
+					{Name: "hermetic", Value: true},      // boolean parameter
+					{Name: "timeout", Value: 3600.0},     // float64 parameter
+					{Name: "retry_count", Value: int(3)}, // int parameter
 				},
 			},
 		},

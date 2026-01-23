@@ -18,6 +18,7 @@ go.work
 /build-analyzer
 /jenkins-server
 /ocp-metadata-server
+/jira-server
 
 # Credentials and sensitive files
 .credentials/*.json

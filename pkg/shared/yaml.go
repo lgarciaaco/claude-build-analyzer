@@ -389,12 +389,12 @@ func (p *YAMLParser) MatchFieldValue(fieldValue interface{}, searchValue string,
 		if !caseSensitive {
 			compareValue = strings.ToLower(v)
 		}
-		
+
 		// Exact match
 		if compareValue == searchValue {
 			return "exact", true
 		}
-		
+
 		// Partial match
 		if strings.Contains(compareValue, searchValue) {
 			return "partial", true
@@ -408,7 +408,7 @@ func (p *YAMLParser) MatchFieldValue(fieldValue interface{}, searchValue string,
 				if !caseSensitive {
 					compareValue = strings.ToLower(itemStr)
 				}
-				
+
 				if compareValue == searchValue || strings.Contains(compareValue, searchValue) {
 					return "array_contains", true
 				}
@@ -422,7 +422,7 @@ func (p *YAMLParser) MatchFieldValue(fieldValue interface{}, searchValue string,
 			if !caseSensitive {
 				compareValue = strings.ToLower(item)
 			}
-			
+
 			if compareValue == searchValue || strings.Contains(compareValue, searchValue) {
 				return "array_contains", true
 			}
@@ -435,7 +435,7 @@ func (p *YAMLParser) MatchFieldValue(fieldValue interface{}, searchValue string,
 		if !caseSensitive {
 			compareValue = strings.ToLower(strValue)
 		}
-		
+
 		if compareValue == searchValue || strings.Contains(compareValue, searchValue) {
 			return "partial", true
 		}

@@ -19,10 +19,10 @@ const (
 	defaultDatasetID = "events"
 	defaultTableID   = "builds"
 	taskRunTableID   = "taskruns"
-	
+
 	// Concurrency limits to prevent resource overwhelm
 	maxConcurrentQueries = 10
-	
+
 	// Standard partition window for optimal BigQuery performance
 	standardPartitionDays = 90
 )
@@ -33,12 +33,12 @@ func truncateToLastLines(logOutput string, maxLines int) string {
 	if logOutput == "" {
 		return logOutput
 	}
-	
+
 	lines := strings.Split(logOutput, "\n")
 	if len(lines) <= maxLines {
 		return logOutput
 	}
-	
+
 	// Return the last maxLines lines
 	startIndex := len(lines) - maxLines
 	return strings.Join(lines[startIndex:], "\n")
@@ -47,12 +47,12 @@ func truncateToLastLines(logOutput string, maxLines int) string {
 // containerJSON represents the JSON structure for efficient parsing
 // This matches the ContainerInfo fields to avoid map[string]interface{} overhead
 type containerJSON struct {
-	Name     string `json:"name"`
-	State    string `json:"state"`
-	Reason   string `json:"reason"`
-	Image    string `json:"image"`
-	IsInit   string `json:"is_init"`
-	ExitCode string `json:"exit_code"`
+	Name      string `json:"name"`
+	State     string `json:"state"`
+	Reason    string `json:"reason"`
+	Image     string `json:"image"`
+	IsInit    string `json:"is_init"`
+	ExitCode  string `json:"exit_code"`
 	LogOutput string `json:"log_output"`
 }
 
@@ -130,15 +130,15 @@ func (ec *errorCollector) hasErrors() bool {
 func (ec *errorCollector) combinedError() error {
 	ec.mu.Lock()
 	defer ec.mu.Unlock()
-	
+
 	if len(ec.errors) == 0 {
 		return nil
 	}
-	
+
 	if len(ec.errors) == 1 {
 		return ec.errors[0]
 	}
-	
+
 	var errorStrings []string
 	for _, err := range ec.errors {
 		errorStrings = append(errorStrings, err.Error())
@@ -151,31 +151,31 @@ func compareArchitectures(arches1, arches2 []string) []string {
 	// Create sets for O(1) lookup
 	set1 := make(map[string]bool, len(arches1))
 	set2 := make(map[string]bool, len(arches2))
-	
+
 	for _, arch := range arches1 {
 		set1[arch] = true
 	}
 	for _, arch := range arches2 {
 		set2[arch] = true
 	}
-	
+
 	// Find symmetric difference (architectures present in only one build)
 	var differences []string
-	
+
 	// Check for architectures in build1 but not in build2
 	for arch := range set1 {
 		if !set2[arch] {
 			differences = append(differences, arch)
 		}
 	}
-	
+
 	// Check for architectures in build2 but not in build1
 	for arch := range set2 {
 		if !set1[arch] {
 			differences = append(differences, arch)
 		}
 	}
-	
+
 	return differences
 }
 
@@ -212,9 +212,9 @@ func (qb *QueryBuilder) fromClause() string {
 
 // buildQuery constructs complete SQL with base SELECT, FROM, and custom WHERE clause
 func (qb *QueryBuilder) buildQuery(whereClause string) string {
-	return fmt.Sprintf("%s\n%s\n%s", 
-		qb.baseSelectClause(), 
-		qb.fromClause(), 
+	return fmt.Sprintf("%s\n%s\n%s",
+		qb.baseSelectClause(),
+		qb.fromClause(),
 		whereClause)
 }
 
@@ -479,7 +479,7 @@ func (c *Client) QueryComponentsAsync(ctx context.Context, componentNames []stri
 
 	results := make(chan result, len(componentNames))
 	var wg sync.WaitGroup
-	
+
 	// Create semaphore to limit concurrent operations
 	sem := newSemaphore(maxConcurrentQueries)
 
@@ -488,7 +488,7 @@ func (c *Client) QueryComponentsAsync(ctx context.Context, componentNames []stri
 		wg.Add(1)
 		go func(comp string) {
 			defer wg.Done()
-			
+
 			// Acquire semaphore slot (blocks if limit reached)
 			sem.acquire()
 			defer sem.release()
@@ -514,7 +514,7 @@ func (c *Client) QueryComponentsAsync(ctx context.Context, componentNames []stri
 	// Collect results with proper error aggregation
 	componentBuilds := make(map[string][]shared.BuildRecord)
 	var errCollector errorCollector
-	
+
 	for res := range results {
 		if res.err != nil {
 			log.Printf("Error querying component %s: %v", res.component, res.err)
@@ -586,7 +586,7 @@ func (c *Client) buildFailureQuery(query shared.BuildFailureQuery) (string, map[
 	// Build query efficiently using string builder
 	var builder strings.Builder
 	builder.WriteString(baseQuery)
-	
+
 	// Add all conditions
 	for _, condition := range conditions {
 		builder.WriteString(" AND ")
@@ -675,8 +675,7 @@ func (c *Client) GetTaskRunsForBuild(ctx context.Context, buildID string) ([]sha
 		if err != nil {
 			return nil, fmt.Errorf("failed to read TaskRun result: %w", err)
 		}
-		
-		
+
 		// Parse containers JSON efficiently using structured parsing
 		if taskRun.ContainersJSON != "" {
 			var jsonContainers []containerJSON
@@ -690,7 +689,7 @@ func (c *Client) GetTaskRunsForBuild(ctx context.Context, buildID string) ([]sha
 				}
 			}
 		}
-		
+
 		taskRuns = append(taskRuns, taskRun)
 	}
 
@@ -725,22 +724,22 @@ func (c *Client) ExtractFailedContainerLogs(taskRuns []shared.TaskRunRecord) []s
 	for _, taskRun := range taskRuns {
 		for _, container := range taskRun.Containers {
 			totalContainers++
-			
+
 			// Include containers that failed or have non-empty log output
-			if (container.ExitCode.Valid && container.ExitCode.Int64 != 0) || 
-			   container.State == "terminated" && container.Reason != "Completed" ||
-			   container.GetLogOutput() != "" {
-				
+			if (container.ExitCode.Valid && container.ExitCode.Int64 != 0) ||
+				container.State == "terminated" && container.Reason != "Completed" ||
+				container.GetLogOutput() != "" {
+
 				if container.GetLogOutput() == "" {
 					emptyLogCount++
 					exitCodeVal := "nil"
 					if container.ExitCode.Valid {
 						exitCodeVal = fmt.Sprintf("%d", container.ExitCode.Int64)
 					}
-					log.Printf("Warning: Failed container %s has empty log output (state: %s, reason: %s, exitCode: %s)", 
+					log.Printf("Warning: Failed container %s has empty log output (state: %s, reason: %s, exitCode: %s)",
 						container.Name, container.State, container.Reason, exitCodeVal)
 				}
-				
+
 				failedContainers = append(failedContainers, container)
 			}
 		}
@@ -749,8 +748,8 @@ func (c *Client) ExtractFailedContainerLogs(taskRuns []shared.TaskRunRecord) []s
 	if emptyLogCount > 0 {
 		log.Printf("Warning: %d out of %d failed containers have empty log output", emptyLogCount, len(failedContainers))
 	}
-	
-	log.Printf("Extracted %d failed containers from %d total containers across %d TaskRuns", 
+
+	log.Printf("Extracted %d failed containers from %d total containers across %d TaskRuns",
 		len(failedContainers), totalContainers, len(taskRuns))
 
 	return failedContainers
@@ -760,20 +759,20 @@ func (c *Client) ExtractFailedContainerLogs(taskRuns []shared.TaskRunRecord) []s
 func (c *Client) AnalyzeContainerLogs(containers []shared.ContainerInfo) []string {
 	var errorSummary []string
 	errorPatterns := map[string]string{
-		"permission denied":                "Permission/access issues",
-		"no space left":                    "Disk space issues",
-		"connection refused":               "Network connectivity issues",
-		"timeout":                          "Timeout issues",
-		"out of memory":                    "Memory issues",
-		"killed":                           "Process killed (likely OOM or timeout)",
-		"error: failed to":                 "Build step failure",
-		"fatal: unable to":                 "Git/source issues",
-		"failed to pull":                   "Image pull issues",
-		"npm err":                          "NPM/Node.js issues",
-		"go: module":                       "Go module issues",
-		"python: can't":                    "Python dependency issues",
-		"error: failed to solve":           "Docker build issues",
-		"error: build failed":              "Generic build failure",
+		"permission denied":      "Permission/access issues",
+		"no space left":          "Disk space issues",
+		"connection refused":     "Network connectivity issues",
+		"timeout":                "Timeout issues",
+		"out of memory":          "Memory issues",
+		"killed":                 "Process killed (likely OOM or timeout)",
+		"error: failed to":       "Build step failure",
+		"fatal: unable to":       "Git/source issues",
+		"failed to pull":         "Image pull issues",
+		"npm err":                "NPM/Node.js issues",
+		"go: module":             "Go module issues",
+		"python: can't":          "Python dependency issues",
+		"error: failed to solve": "Docker build issues",
+		"error: build failed":    "Generic build failure",
 	}
 
 	foundErrors := make(map[string]bool)

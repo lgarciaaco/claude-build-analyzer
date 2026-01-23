@@ -83,9 +83,9 @@ func (c *Client) QueryKonfluxBuilds(ctx context.Context, component, assembly, gr
 	jobPath := "job/aos-cd-builds/job/build%252Focp4-konflux/api/json"
 	params := url.Values{}
 	params.Set("tree", "builds[number,url,result,timestamp,duration,actions[parameters[name,value]]]")
-	
+
 	apiURL := fmt.Sprintf("%s/%s?%s", c.baseURL, jobPath, params.Encode())
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -121,7 +121,7 @@ func (c *Client) QueryKonfluxBuilds(ctx context.Context, component, assembly, gr
 		}
 
 		job := c.convertToKonfluxJob(build)
-		
+
 		// Filter by component if specified
 		if component != "" && !strings.Contains(strings.ToLower(job.Component), strings.ToLower(component)) {
 			continue
@@ -140,7 +140,7 @@ func (c *Client) QueryKonfluxBuilds(ctx context.Context, component, assembly, gr
 		jobs = append(jobs, job)
 	}
 
-	log.Printf("Found %d Konflux builds matching criteria (component: %s, assembly: %s, group: %s, days: %d)", 
+	log.Printf("Found %d Konflux builds matching criteria (component: %s, assembly: %s, group: %s, days: %d)",
 		len(jobs), component, assembly, group, days)
 
 	return jobs, nil
@@ -149,7 +149,7 @@ func (c *Client) QueryKonfluxBuilds(ctx context.Context, component, assembly, gr
 // GetJenkinsLogs retrieves console logs for a specific Jenkins build
 func (c *Client) GetJenkinsLogs(ctx context.Context, buildNumber int) (string, error) {
 	logURL := fmt.Sprintf("%s/job/aos-cd-builds/job/build%%252Focp4-konflux/%d/consoleText", c.baseURL, buildNumber)
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", logURL, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create log request: %w", err)
@@ -184,18 +184,18 @@ func (c *Client) AnalyzeJenkinsLogs(logs string) []string {
 
 	// Check for common Konflux build failure patterns
 	patterns := map[string]string{
-		"authentication failed":     "Authentication issues with Konflux or registry",
-		"timeout":                  "Build timeout - check for hanging processes",
-		"out of memory":            "Memory limit exceeded during build",
-		"no space left":            "Disk space exhausted",
-		"network unreachable":      "Network connectivity issues",
-		"permission denied":        "Permission or access control issues",
-		"image not found":          "Base image or dependency not found",
-		"build failed":             "General build failure",
-		"hermetic":                 "Hermetic build constraint violation",
-		"cachi2":                   "Dependency caching issues",
-		"lockfile":                 "Dependency lockfile issues",
-		"conflict":                 "Build conflict or resource contention",
+		"authentication failed": "Authentication issues with Konflux or registry",
+		"timeout":               "Build timeout - check for hanging processes",
+		"out of memory":         "Memory limit exceeded during build",
+		"no space left":         "Disk space exhausted",
+		"network unreachable":   "Network connectivity issues",
+		"permission denied":     "Permission or access control issues",
+		"image not found":       "Base image or dependency not found",
+		"build failed":          "General build failure",
+		"hermetic":              "Hermetic build constraint violation",
+		"cachi2":                "Dependency caching issues",
+		"lockfile":              "Dependency lockfile issues",
+		"conflict":              "Build conflict or resource contention",
 	}
 
 	for pattern, description := range patterns {
@@ -222,7 +222,7 @@ func (c *Client) AnalyzeJenkinsLogs(logs string) []string {
 // GetBuildDetails retrieves detailed information for a specific build
 func (c *Client) GetBuildDetails(ctx context.Context, buildNumber int) (*KonfluxJob, error) {
 	buildURL := fmt.Sprintf("%s/job/aos-cd-builds/job/build%%252Focp4-konflux/%d/api/json", c.baseURL, buildNumber)
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", buildURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -261,7 +261,7 @@ func (c *Client) convertToKonfluxJob(build JenkinsBuild) KonfluxJob {
 		Duration:    time.Duration(build.Duration) * time.Millisecond,
 		LogURL:      fmt.Sprintf("%s/job/aos-cd-builds/job/build%%252Focp4-konflux/%d/console", c.baseURL, build.Number),
 		Parameters:  make(map[string]string),
-		Assembly:    "stream", // default
+		Assembly:    "stream",         // default
 		Group:       "openshift-4.21", // default
 	}
 
@@ -286,9 +286,9 @@ func (c *Client) convertToKonfluxJob(build JenkinsBuild) KonfluxJob {
 			default:
 				valueStr = fmt.Sprintf("%v", v)
 			}
-			
+
 			job.Parameters[param.Name] = valueStr
-			
+
 			// Extract component and assembly from common parameter patterns
 			switch strings.ToLower(param.Name) {
 			case "component", "component_name":

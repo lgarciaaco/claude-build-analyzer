@@ -1,4 +1,4 @@
-# CLAUDE.md - Tri-Server MCP Build Analysis System
+# CLAUDE.md - Quad-Server MCP Build Analysis System
 
 ## Essential Documentation
 
@@ -9,7 +9,7 @@
 - Performance optimization guidelines
 
 ## Project Purpose
-This tri-server Go-based MCP system enables Claude to analyze OpenShift Container Platform build failures with natural language queries. The system uses three specialized servers for optimal performance and maintainability.
+This quad-server Go-based MCP system enables Claude to analyze OpenShift Container Platform build failures with natural language queries. The system uses four specialized servers for optimal performance and maintainability.
 
 ## Quick Start: Essential Query Order
 
@@ -25,7 +25,11 @@ This tri-server Go-based MCP system enables Claude to analyze OpenShift Containe
    - User mentions specific Jenkins job numbers
    - Need build execution context beyond failure data
    - Want to extract build parameters (version, assembly)
-4. **STEP 4 (ONLY AFTER 1&2)**: Build analysis using `mcp__build-analyzer__*` tools
+4. **STEP 4 (CONDITIONAL)**: JIRA analysis using `mcp__jira-server__*` tools - USE when:
+   - Jenkins logs reference OCPBUGS tickets or CVEs
+   - Need security impact analysis for build failures
+   - Want to correlate build issues with known bugs
+5. **STEP 5 (ONLY AFTER 1&2)**: Build analysis using `mcp__build-analyzer__*` tools
 
 **🚨 VIOLATION PREVENTION**: If you call ANY `mcp__build-analyzer__*` tool WITHOUT first completing steps 1 & 2, you are violating the protocol.
 
@@ -35,28 +39,28 @@ This tri-server Go-based MCP system enables Claude to analyze OpenShift Containe
 - 🎯 **Accuracy**: Validate component names before database queries
 - 📋 **Context**: Configuration understanding informs failure analysis
 
-## Tri-Server Architecture
+## Quad-Server Architecture
 
 ### Server Separation Strategy
 ```
-┌─────────────────────────┐    ┌─────────────────────────┐    ┌─────────────────────────┐
-│    Build Analyzer       │    │    OCP Metadata         │    │    Jenkins Server       │
-│       Server            │    │       Server            │    │                         │
-├─────────────────────────┤    ├─────────────────────────┤    ├─────────────────────────┤
-│ • BigQuery Integration  │    │ • Git Repository Mgmt   │    │ • Jenkins API Access    │
-│ • Build failure queries │    │ • YAML Metadata Parse   │    │ • Konflux build logs    │
-│ • Log analysis & URLs   │    │ • Component configs     │    │ • Console log analysis  │
-│ • Architecture patterns │    │ • Fuzzy search matching │    │ • Build correlation     │
-│ • Performance-focused   │    │ • Multi-version support │    │ • Pattern detection     │
-└─────────────────────────┘    └─────────────────────────┘    └─────────────────────────┘
+┌─────────────────────────┐ ┌─────────────────────────┐ ┌─────────────────────────┐ ┌─────────────────────────┐
+│    Build Analyzer       │ │    OCP Metadata         │ │    Jenkins Server       │ │    JIRA Server          │
+│       Server            │ │       Server            │ │                         │ │                         │
+├─────────────────────────┤ ├─────────────────────────┤ ├─────────────────────────┤ ├─────────────────────────┤
+│ • BigQuery Integration  │ │ • Git Repository Mgmt   │ │ • Jenkins API Access    │ │ • JIRA API Access       │
+│ • Build failure queries │ │ • YAML Metadata Parse   │ │ • Konflux build logs    │ │ • OCPBUGS ticket lookup │
+│ • Log analysis & URLs   │ │ • Component configs     │ │ • Console log analysis  │ │ • CVE impact analysis   │
+│ • Architecture patterns │ │ • Fuzzy search matching │ │ • Build correlation     │ │ • Security assessment   │
+│ • Performance-focused   │ │ • Multi-version support │ │ • Pattern detection     │ │ • Issue correlation     │
+└─────────────────────────┘ └─────────────────────────┘ └─────────────────────────┘ └─────────────────────────┘
 ```
 
 ### Key Architectural Benefits
 - **Separation of Concerns**: Each server optimized for its specific data source
 - **Independent Scaling**: Servers can scale and fail independently  
-- **Technology Optimization**: BigQuery vs Git vs Jenkins API optimizations in each server
+- **Technology Optimization**: BigQuery vs Git vs Jenkins vs JIRA API optimizations in each server
 - **Maintainable Code**: Shared abstractions with focused implementations
-- **Layered Analysis**: Jenkins execution context + BigQuery build outcomes + Configuration metadata
+- **Layered Analysis**: Jenkins execution + JIRA issue tracking + BigQuery build outcomes + Configuration metadata
 
 ## Data Sources and Responsibilities
 
@@ -102,6 +106,23 @@ This tri-server Go-based MCP system enables Claude to analyze OpenShift Containe
 - Support assembly-based filtering (stream, test, standard, custom, preview)
 
 **Key Process Role**: Provides build execution context that enhances BigQuery failure analysis. Essential for extracting accurate version/assembly parameters from actual build jobs.
+
+### JIRA Server
+**Data Source**: JIRA REST API at issues.redhat.com
+
+**Authentication**: ✅ **CONFIGURED** - JIRA credentials are available in `.mcp.json`
+- **Token**: Pre-configured API Bearer token for Red Hat JIRA access
+- **Access Level**: Can retrieve OCPBUGS tickets, CVE mappings, and security impact analysis
+
+**Responsibilities**:
+- Query OCPBUGS tickets referenced in Jenkins logs
+- Analyze CVE impact and security assessments
+- Extract component mappings from security issues
+- Correlate build failures with known bugs and CVEs
+- Provide security impact analysis for architecture planning
+- Support issue lifecycle tracking and resolution status
+
+**Key Process Role**: Links build failures to known issues and security vulnerabilities. Critical for understanding whether build failures are related to tracked bugs, CVEs, or require new issue creation.
 
 ## Assembly Parameter Usage
 
@@ -184,7 +205,19 @@ Every build analysis request MUST follow this exact sequence:
 
 **Critical Process**: Always extract BUILD_VERSION and ASSEMBLY from Jenkins parameters to ensure version consistency in subsequent BigQuery queries
 
-#### STEP 4: Build Analysis (ONLY AFTER STEPS 1 & 2)
+#### STEP 4: JIRA Analysis (CONDITIONAL - AFTER STEPS 1 & 2)
+**Tools**: `mcp__jira-server__*` (get_issue, search_issues, get_issue_comments, analyze_security_impact)
+**Purpose**: Extract JIRA issue context and CVE analysis when referenced in Jenkins logs
+**Time**: 1-3 seconds
+**Status**: ✅ CONDITIONAL after Steps 1 & 2
+
+**When to Use**:
+- Jenkins logs contain OCPBUGS ticket references (e.g., OCPBUGS-12345)
+- CVE identifiers found in build failure context
+- Security-related build failures requiring impact analysis
+- Need to correlate build issues with existing bug reports
+
+#### STEP 5: Build Analysis (ONLY AFTER STEPS 1 & 2)
 **Tools**: `mcp__build-analyzer__*` (query_build_failures, analyze_build_logs, compare_builds)
 **Purpose**: Expensive BigQuery operations for failure analysis
 **Time**: 1-5 seconds + BigQuery costs
@@ -229,7 +262,15 @@ Every build analysis request MUST follow this exact sequence:
 - `mcp__jenkins-server__correlate_jenkins_builds`: Correlate Jenkins jobs with BigQuery data
 - `mcp__jenkins-server__open_browser_links`: Open Konflux, Jenkins, and GitHub URLs in browser with safety validation
 
-#### Build Analyzer Server Tools (STEP 4 - RESTRICTED ACCESS)
+#### JIRA Server Tools (STEP 4 - OPTIONAL CONTEXT)
+**✅ OPTIONAL after Steps 1 & 2, provides JIRA issue context:**
+
+- `mcp__jira-server__get_issue`: Retrieve detailed OCPBUGS ticket information with security analysis
+- `mcp__jira-server__search_issues`: Search JIRA issues by CVE, component, or JQL with pattern analysis  
+- `mcp__jira-server__get_issue_comments`: Retrieve and analyze JIRA issue comments for technical insights
+- `mcp__jira-server__analyze_security_impact`: Perform detailed security impact analysis for CVE-related issues
+
+#### Build Analyzer Server Tools (STEP 5 - RESTRICTED ACCESS)
 **⛔ FORBIDDEN without completing metadata validation first:**
 
 - `mcp__build-analyzer__query_build_failures`: Build failure queries with filtering
@@ -288,8 +329,13 @@ Every build analysis request MUST follow this exact sequence:
 - **Startup Time**: 1-2 seconds (HTTP client initialization)
 - **Query Response**: 1-3 seconds (Jenkins API calls)
 
+### JIRA Server
+- **Memory Usage**: 15-40MB (HTTP client and caching)
+- **Startup Time**: 1-2 seconds (JIRA API client initialization)
+- **Query Response**: 1-3 seconds (JIRA API calls)
+
 ### Combined System
-- **Total Memory**: 170-550MB (all three servers running)
+- **Total Memory**: 185-590MB (all four servers running)
 - **Concurrent Load**: 50+ analysis requests per hour
 - **Failure Resilience**: Independent server failures don't affect the others
 
@@ -300,10 +346,12 @@ Every build analysis request MUST follow this exact sequence:
 2. **Build Execution** (Konflux/Brew) → Build Records + Jenkins Jobs
 3. **Data Aggregation** (BigQuery) → Searchable Build Database
 4. **Jenkins Storage** (art-jenkins) → Console Logs + Job Metadata + Build Parameters
-5. **Metadata Analysis** (OCP Metadata Server) → Configuration Intelligence
-6. **Jenkins Analysis** (Jenkins Server) → Execution Context + Parameter Extraction + Log Analysis
-7. **Build Analysis** (Build Analyzer Server) → Failure Intelligence with Jenkins-correlated data
-8. **User Queries** (Natural Language) → Evidence-Based Recommendations with Multi-Source Correlation
+5. **Issue Tracking** (JIRA) → OCPBUGS tickets + CVE mappings + Security analysis
+6. **Metadata Analysis** (OCP Metadata Server) → Configuration Intelligence
+7. **Jenkins Analysis** (Jenkins Server) → Execution Context + Parameter Extraction + Log Analysis
+8. **JIRA Analysis** (JIRA Server) → Issue Intelligence + CVE correlation + Security impact
+9. **Build Analysis** (Build Analyzer Server) → Failure Intelligence with multi-source correlation
+10. **User Queries** (Natural Language) → Evidence-Based Recommendations with comprehensive correlation
 
 ## Development Guidelines
 
@@ -318,6 +366,10 @@ Every build analysis request MUST follow this exact sequence:
 ### Adding New Jenkins Features
 - **Target Server**: Jenkins Server (`internal/jenkins-server/server.go`)
 - **Requirements**: Jenkins API integration, log pattern analysis, build correlation
+
+### Adding New JIRA Features
+- **Target Server**: JIRA Server (`internal/jira-server/server.go`)
+- **Requirements**: JIRA REST API integration, issue analysis, security impact assessment
 
 ### Shared Functionality Development
 - **Target Location**: `pkg/shared/` package
@@ -348,6 +400,9 @@ Every build analysis request MUST follow this exact sequence:
 
 # Jenkins Server
 ./jenkins-server
+
+# JIRA Server
+./jira-server
 ```
 
 **Integration with Claude Code**:
@@ -362,7 +417,9 @@ Every build analysis request MUST follow this exact sequence:
 - **Jenkins Authentication**: ✅ **PRE-CONFIGURED** in `.mcp.json` with full API access
   - `JENKINS_USERNAME`: `lgarciaa`
   - `JENKINS_TOKEN`: Pre-configured API token
-- **Memory Allocation**: Ensure sufficient memory for concurrent operations (170-550MB total)
+- **JIRA Authentication**: ✅ **PRE-CONFIGURED** in `.mcp.json` with full API access
+  - `JIRA_TOKEN`: Pre-configured Bearer token for Red Hat JIRA access
+- **Memory Allocation**: Ensure sufficient memory for concurrent operations (185-590MB total)
 
 ### Container Log Analysis Enhancement
 
