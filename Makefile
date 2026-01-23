@@ -1,17 +1,17 @@
-# Claude Build Analyzer - Tri-Server MCP Build System
+# Claude Build Analyzer - Quad-Server MCP Build System
 
 # Variables
 GO_VERSION := 1.21
 BUILD_DIR := .
-BINARIES := build-analyzer ocp-metadata-server jenkins-server
+BINARIES := build-analyzer ocp-metadata-server jenkins-server jira-server
 
 # Default target
 .PHONY: all
 all: build
 
-# Build all three servers
+# Build all four servers
 .PHONY: build
-build: build-analyzer ocp-metadata-server jenkins-server
+build: build-analyzer ocp-metadata-server jenkins-server jira-server
 
 # Build the BigQuery-focused build analyzer server
 .PHONY: build-analyzer
@@ -31,11 +31,17 @@ jenkins-server:
 	@echo "Building Jenkins server..."
 	go build -o $(BUILD_DIR)/jenkins-server ./cmd/jenkins-server
 
+# Build the JIRA-focused server for issue analysis
+.PHONY: jira-server
+jira-server:
+	@echo "Building JIRA server..."
+	go build -o $(BUILD_DIR)/jira-server ./cmd/jira-server
+
 # Clean built binaries
 .PHONY: clean
 clean:
 	@echo "Cleaning binaries..."
-	rm -f $(BUILD_DIR)/build-analyzer $(BUILD_DIR)/ocp-metadata-server $(BUILD_DIR)/jenkins-server
+	rm -f $(BUILD_DIR)/build-analyzer $(BUILD_DIR)/ocp-metadata-server $(BUILD_DIR)/jenkins-server $(BUILD_DIR)/jira-server
 
 # Test both servers
 .PHONY: test
@@ -61,6 +67,12 @@ test-ocp-metadata: ocp-metadata-server
 test-jenkins: jenkins-server
 	@echo "Testing Jenkins server..."
 	@echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}' | ./jenkins-server
+
+# Test JIRA server independently
+.PHONY: test-jira
+test-jira: jira-server
+	@echo "Testing JIRA server..."
+	@echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}' | ./jira-server
 
 # Format code
 .PHONY: fmt
@@ -94,42 +106,48 @@ deps:
 # Show build information
 .PHONY: info
 info:
-	@echo "Claude Build Analyzer - Tri-Server MCP System"
+	@echo "Claude Build Analyzer - Quad-Server MCP System"
 	@echo "Go version: $(shell go version)"
 	@echo "Build targets:"
 	@echo "  - build-analyzer: BigQuery-focused server (cmd/build-analyzer)"
 	@echo "  - ocp-metadata-server: Git metadata-focused server (cmd/ocp-metadata-server)"
 	@echo "  - jenkins-server: Jenkins API-focused server (cmd/jenkins-server)"
+	@echo "  - jira-server: JIRA API-focused server (cmd/jira-server)"
 	@echo ""
 	@echo "Available commands:"
-	@echo "  make build           - Build all three servers"
+	@echo "  make build           - Build all four servers"
 	@echo "  make build-analyzer  - Build BigQuery server only"
 	@echo "  make ocp-metadata-server - Build metadata server only"
 	@echo "  make jenkins-server  - Build Jenkins server only"
+	@echo "  make jira-server     - Build JIRA server only"
 	@echo "  make test           - Run all tests"
 	@echo "  make test-build-analyzer - Test BigQuery server"
 	@echo "  make test-ocp-metadata - Test metadata server"
 	@echo "  make test-jenkins    - Test Jenkins server"
+	@echo "  make test-jira       - Test JIRA server"
 	@echo "  make clean          - Remove binaries"
 	@echo "  make check          - Format, vet, and test"
 
 # Architecture verification
 .PHONY: verify-structure
 verify-structure:
-	@echo "Verifying tri-server architecture..."
+	@echo "Verifying quad-server architecture..."
 	@test -f cmd/build-analyzer/main.go || (echo "ERROR: Missing cmd/build-analyzer/main.go"; exit 1)
 	@test -f cmd/ocp-metadata-server/main.go || (echo "ERROR: Missing cmd/ocp-metadata-server/main.go"; exit 1)
 	@test -f cmd/jenkins-server/main.go || (echo "ERROR: Missing cmd/jenkins-server/main.go"; exit 1)
+	@test -f cmd/jira-server/main.go || (echo "ERROR: Missing cmd/jira-server/main.go"; exit 1)
 	@test -f internal/build-analyzer-server/server.go || (echo "ERROR: Missing internal/build-analyzer-server/server.go"; exit 1)
 	@test -f internal/metadata-server/server.go || (echo "ERROR: Missing internal/metadata-server/server.go"; exit 1)
 	@test -f internal/jenkins-server/server.go || (echo "ERROR: Missing internal/jenkins-server/server.go"; exit 1)
+	@test -f internal/jira-server/server.go || (echo "ERROR: Missing internal/jira-server/server.go"; exit 1)
 	@test -f internal/jenkins/client.go || (echo "ERROR: Missing internal/jenkins/client.go"; exit 1)
+	@test -f internal/jira/client.go || (echo "ERROR: Missing internal/jira/client.go"; exit 1)
 	@test -f pkg/shared/mcp.go || (echo "ERROR: Missing pkg/shared/mcp.go"; exit 1)
 	@test -f pkg/shared/bigquery.go || (echo "ERROR: Missing pkg/shared/bigquery.go"; exit 1)
 	@test ! -d internal/mcp || (echo "ERROR: Old monolithic server directory still exists"; exit 1)
 	@test ! -d internal/metadata || (echo "ERROR: Old metadata directory still exists"; exit 1)
 	@test ! -d pkg/types || (echo "ERROR: Old types directory still exists"; exit 1)
-	@echo "✓ Tri-server architecture verification passed"
+	@echo "✓ Quad-server architecture verification passed"
 
 # Help
 .PHONY: help

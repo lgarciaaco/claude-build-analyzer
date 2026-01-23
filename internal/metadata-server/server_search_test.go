@@ -12,7 +12,7 @@ import (
 
 // mockGitRepository implements GitRepository for testing
 type mockGitRepository struct {
-	files map[string][]byte
+	files  map[string][]byte
 	branch string
 }
 
@@ -171,63 +171,63 @@ func TestServer_SearchByField_Owners(t *testing.T) {
 	server, _ := createTestServer()
 
 	tests := []struct {
-		name           string
-		field          string
-		value          string
-		version        string
-		maxResults     int
-		caseSensitive  bool
-		expectedCount  int
+		name               string
+		field              string
+		value              string
+		version            string
+		maxResults         int
+		caseSensitive      bool
+		expectedCount      int
 		expectedComponents []string
 	}{
 		{
-			name:           "search owners for team-monitoring exact",
-			field:          "owners",
-			value:          "team-monitoring@redhat.com",
-			version:        "4.21",
-			maxResults:     10,
-			caseSensitive:  false,
-			expectedCount:  2,
+			name:               "search owners for team-monitoring exact",
+			field:              "owners",
+			value:              "team-monitoring@redhat.com",
+			version:            "4.21",
+			maxResults:         10,
+			caseSensitive:      false,
+			expectedCount:      2,
 			expectedComponents: []string{"cluster-monitoring-operator", "monitoring-plugin"},
 		},
 		{
-			name:           "search owners for monitoring partial",
-			field:          "owners",
-			value:          "monitoring",
-			version:        "4.21",
-			maxResults:     10,
-			caseSensitive:  false,
-			expectedCount:  2,
+			name:               "search owners for monitoring partial",
+			field:              "owners",
+			value:              "monitoring",
+			version:            "4.21",
+			maxResults:         10,
+			caseSensitive:      false,
+			expectedCount:      2,
 			expectedComponents: []string{"cluster-monitoring-operator", "monitoring-plugin"},
 		},
 		{
-			name:           "search owners for team-auth",
-			field:          "owners",
-			value:          "team-auth@redhat.com",
-			version:        "4.21",
-			maxResults:     10,
-			caseSensitive:  false,
-			expectedCount:  1,
+			name:               "search owners for team-auth",
+			field:              "owners",
+			value:              "team-auth@redhat.com",
+			version:            "4.21",
+			maxResults:         10,
+			caseSensitive:      false,
+			expectedCount:      1,
 			expectedComponents: []string{"oauth-server"},
 		},
 		{
-			name:           "search owners for non-existent team",
-			field:          "owners",
-			value:          "team-nonexistent@redhat.com",
-			version:        "4.21",
-			maxResults:     10,
-			caseSensitive:  false,
-			expectedCount:  0,
+			name:               "search owners for non-existent team",
+			field:              "owners",
+			value:              "team-nonexistent@redhat.com",
+			version:            "4.21",
+			maxResults:         10,
+			caseSensitive:      false,
+			expectedCount:      0,
 			expectedComponents: []string{},
 		},
 		{
-			name:           "search maintainers field",
-			field:          "maintainers",
-			value:          "team-etcd@redhat.com",
-			version:        "4.21",
-			maxResults:     10,
-			caseSensitive:  false,
-			expectedCount:  1,
+			name:               "search maintainers field",
+			field:              "maintainers",
+			value:              "team-etcd@redhat.com",
+			version:            "4.21",
+			maxResults:         10,
+			caseSensitive:      false,
+			expectedCount:      1,
 			expectedComponents: []string{"etcd-operator"},
 		},
 	}
@@ -295,31 +295,31 @@ func TestServer_SearchByField_NestedFields(t *testing.T) {
 	server, _ := createTestServer()
 
 	tests := []struct {
-		name           string
-		field          string
-		value          string
-		expectedCount  int
+		name               string
+		field              string
+		value              string
+		expectedCount      int
 		expectedComponents []string
 	}{
 		{
-			name:           "search nested labels description",
-			field:          "labels.io.k8s.description",
-			value:          "monitoring",
-			expectedCount:  3, // cluster-monitoring-operator, monitoring-plugin, oauth-server (OAuth authentication server doesn't match)
+			name:               "search nested labels description",
+			field:              "labels.io.k8s.description",
+			value:              "monitoring",
+			expectedCount:      3, // cluster-monitoring-operator, monitoring-plugin, oauth-server (OAuth authentication server doesn't match)
 			expectedComponents: []string{"cluster-monitoring-operator", "monitoring-plugin"},
 		},
 		{
-			name:           "search content git url",
-			field:          "content.source.git.url",
-			value:          "monitoring",
-			expectedCount:  2,
+			name:               "search content git url",
+			field:              "content.source.git.url",
+			value:              "monitoring",
+			expectedCount:      2,
 			expectedComponents: []string{"cluster-monitoring-operator", "monitoring-plugin"},
 		},
 		{
-			name:           "search labels license",
-			field:          "labels.License",
-			value:          "ASL 2.0",
-			expectedCount:  2,
+			name:               "search labels license",
+			field:              "labels.License",
+			value:              "ASL 2.0",
+			expectedCount:      2,
 			expectedComponents: []string{"cluster-monitoring-operator", "oauth-server"},
 		},
 	}

@@ -51,17 +51,17 @@ func newMetadataCache(maxSize int, ttl time.Duration) *metadataCache {
 func (mc *metadataCache) get(key string) ([]byte, bool) {
 	mc.mu.RLock()
 	defer mc.mu.RUnlock()
-	
+
 	entry, exists := mc.cache[key]
 	if !exists {
 		return nil, false
 	}
-	
+
 	// Check TTL expiration
 	if time.Since(entry.timestamp) > mc.ttl {
 		return nil, false
 	}
-	
+
 	return entry.data, true
 }
 
@@ -69,21 +69,21 @@ func (mc *metadataCache) get(key string) ([]byte, bool) {
 func (mc *metadataCache) put(key string, data []byte) {
 	mc.mu.Lock()
 	defer mc.mu.Unlock()
-	
+
 	// Update existing entry
 	if entry, exists := mc.cache[key]; exists {
 		entry.data = data
 		entry.timestamp = time.Now()
 		return
 	}
-	
+
 	// Add new entry
 	mc.cache[key] = &cacheEntry{
 		data:      data,
 		timestamp: time.Now(),
 	}
 	mc.keyOrder = append(mc.keyOrder, key)
-	
+
 	// Evict oldest if over capacity
 	if len(mc.cache) > mc.maxSize {
 		oldestKey := mc.keyOrder[0]
@@ -264,7 +264,7 @@ func (s *Server) getComponentMetadata(ctx context.Context, args map[string]inter
 
 	// Create cache key for component metadata
 	cacheKey := fmt.Sprintf("%s:%s", version, componentName)
-	
+
 	// Check cache first
 	if cachedData, found := s.cache.get(cacheKey); found {
 		result := map[string]interface{}{
@@ -531,10 +531,10 @@ func (s *Server) searchByField(ctx context.Context, args map[string]interface{})
 	for _, file := range imageFiles {
 		// Create cache key for raw YAML
 		cacheKey := fmt.Sprintf("%s:%s:raw", version, file)
-		
+
 		var data []byte
 		var found bool
-		
+
 		// Check cache first
 		if cachedData, cacheFound := s.cache.get(cacheKey); cacheFound {
 			data = cachedData
@@ -546,7 +546,7 @@ func (s *Server) searchByField(ctx context.Context, args map[string]interface{})
 				log.Printf("Warning: failed to read file %s: %v", file, err)
 				continue
 			}
-			
+
 			// Cache the raw data
 			s.cache.put(cacheKey, data)
 			found = true

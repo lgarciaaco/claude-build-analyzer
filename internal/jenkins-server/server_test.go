@@ -12,14 +12,15 @@ func TestServer_GetToolList(t *testing.T) {
 
 	toolList := server.GetToolList()
 
-	if len(toolList.Tools) != 3 {
-		t.Errorf("Expected 3 tools, got %d", len(toolList.Tools))
+	if len(toolList.Tools) != 4 {
+		t.Errorf("Expected 4 tools, got %d", len(toolList.Tools))
 	}
 
 	expectedTools := map[string]bool{
-		"query_jenkins_builds":    false,
-		"analyze_jenkins_logs":    false,
+		"query_jenkins_builds":     false,
+		"analyze_jenkins_logs":     false,
 		"correlate_jenkins_builds": false,
+		"open_browser_links":       false,
 	}
 
 	for _, tool := range toolList.Tools {
@@ -213,7 +214,7 @@ func TestServer_correlateJenkinsBuilds_ValidateArguments(t *testing.T) {
 			if !tt.expectValid && isValid {
 				t.Error("Expected invalid arguments")
 			}
-			
+
 			// Use buildNumber to avoid unused variable error
 			if buildNumber > 0 && componentName != "" {
 				t.Logf("Both buildNumber (%d) and componentName (%s) provided", buildNumber, componentName)
@@ -351,10 +352,10 @@ func TestJenkinsLogAnalysis_Structure(t *testing.T) {
 			"ASSEMBLY":  "stream",
 		},
 		Analysis: map[string]interface{}{
-			"logSize":        1024,
-			"hasErrors":      true,
-			"buildDuration":  "5m0s",
-			"isRecentBuild":  true,
+			"logSize":       1024,
+			"hasErrors":     true,
+			"buildDuration": "5m0s",
+			"isRecentBuild": true,
 		},
 	}
 

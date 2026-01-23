@@ -80,7 +80,7 @@ func TestOpenBrowserLinks(t *testing.T) {
 	t.Run("URLs exceeding limit", func(t *testing.T) {
 		urls := []string{
 			"https://github.com/test/repo1",
-			"https://github.com/test/repo2", 
+			"https://github.com/test/repo2",
 			"https://github.com/test/repo3",
 		}
 

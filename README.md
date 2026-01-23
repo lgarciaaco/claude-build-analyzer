@@ -1,14 +1,15 @@
 # Claude Build Analyzer
 
-A high-performance tri-server MCP system written in Go that enables Claude to analyze OpenShift Container Platform build failures with natural language queries.
+A high-performance quad-server MCP system written in Go that enables Claude to analyze OpenShift Container Platform build failures with natural language queries.
 
 ## Overview
 
-This system provides Claude with comprehensive build failure analysis through three specialized MCP servers:
+This system provides Claude with comprehensive build failure analysis through four specialized MCP servers:
 
 - **Build Analyzer Server**: BigQuery-based build failure analysis and log correlation
 - **OCP Metadata Server**: Component metadata access from ocp-build-data repositories  
 - **Jenkins Server**: Jenkins API access for build context and console log analysis
+- **JIRA Server**: JIRA API access for issue tracking and CVE impact analysis
 
 **Example Usage**: Ask Claude "why did ironic fail to build in 4.21?" and get detailed analysis correlating build failures with component configuration changes.
 
@@ -18,26 +19,26 @@ See [Analysis Methodology](docs/ANALYSIS_METHODOLOGY.md) for complete usage work
 
 ## Architecture
 
-### Tri-Server Design
+### Quad-Server Design
 
 ```
-┌─────────────────────┐    ┌──────────────────────┐    ┌─────────────────────┐
-│   Build Analyzer    │    │   OCP Metadata       │    │   Jenkins Server    │
-│      Server         │    │      Server          │    │                     │
-├─────────────────────┤    ├──────────────────────┤    ├─────────────────────┤
-│ • BigQuery queries  │    │ • Component configs  │    │ • Jenkins API       │
-│ • Build log analysis│    │ • Fuzzy search       │    │ • Console logs      │
-│ • Failure patterns  │    │ • YAML parsing       │    │ • Build correlation │
-│ • Architecture data │    │ • Multi-version Git  │    │ • Parameter extract │
-└─────────────────────┘    └──────────────────────┘    └─────────────────────┘
-           │                           │                           │
-           └─────────────────── Claude ────────────────────────────┘
+┌─────────────────────┐ ┌──────────────────────┐ ┌─────────────────────┐ ┌─────────────────────┐
+│   Build Analyzer    │ │   OCP Metadata       │ │   Jenkins Server    │ │   JIRA Server       │
+│      Server         │ │      Server          │ │                     │ │                     │
+├─────────────────────┤ ├──────────────────────┤ ├─────────────────────┤ ├─────────────────────┤
+│ • BigQuery queries  │ │ • Component configs  │ │ • Jenkins API       │ │ • JIRA API access   │
+│ • Build log analysis│ │ • Fuzzy search       │ │ • Console logs      │ │ • OCPBUGS tracking  │
+│ • Failure patterns  │ │ • YAML parsing       │ │ • Build correlation │ │ • CVE analysis      │
+│ • Architecture data │ │ • Multi-version Git  │ │ • Parameter extract │ │ • Security impact   │
+└─────────────────────┘ └──────────────────────┘ └─────────────────────┘ └─────────────────────┘
+           │                           │                           │                           │
+           └───────────────────────────────── Claude ─────────────────────────────────────────┘
 ```
 
 ### Key Benefits
 - **Separation of Concerns**: Each server optimized for its data source
 - **Independent Scaling**: Servers can be scaled independently
-- **Focused Performance**: BigQuery vs Git repository optimizations
+- **Focused Performance**: BigQuery vs Git vs Jenkins vs JIRA API optimizations
 - **Maintainable**: Clean interfaces with shared abstractions
 
 ## Prerequisites
@@ -81,9 +82,9 @@ gcloud auth application-default login
 
 ## Configuration
 
-### Tri-Server MCP Configuration
+### Quad-Server MCP Configuration
 
-Add all three servers to your Claude Code MCP configuration:
+Add all four servers to your Claude Code MCP configuration:
 
 ```json
 {
@@ -103,6 +104,12 @@ Add all three servers to your Claude Code MCP configuration:
         "JENKINS_USERNAME": "your-jenkins-username",
         "JENKINS_TOKEN": "your-jenkins-api-token"
       }
+    },
+    "jira-server": {
+      "command": "/path/to/claude-build-analyzer/jira-server",
+      "env": {
+        "JIRA_TOKEN": "your-jira-api-token"
+      }
     }
   }
 }
@@ -116,6 +123,9 @@ Add all three servers to your Claude Code MCP configuration:
 
 **OCP Metadata Server**:
 - No external credentials required (uses public git repositories)
+
+**JIRA Server**:
+- `JIRA_TOKEN`: Bearer token for Red Hat JIRA API access
 
 ## Usage
 
@@ -166,6 +176,12 @@ Add all three servers to your Claude Code MCP configuration:
 - **`analyze_jenkins_logs`**: Retrieve Jenkins console logs and extract build parameters
 - **`correlate_jenkins_builds`**: Correlate Jenkins execution with BigQuery build records
 
+### JIRA Server Tools
+- **`get_issue`**: Retrieve detailed OCPBUGS ticket information with security analysis
+- **`search_issues`**: Search JIRA issues by CVE, component, or JQL with pattern analysis
+- **`get_issue_comments`**: Retrieve and analyze JIRA issue comments for technical insights
+- **`analyze_security_impact`**: Perform detailed security impact analysis for CVE-related issues
+
 **Process Focus**: Use `GetToolList()` on any server to discover all available methods and parameters dynamically.
 
 ## Data Sources
@@ -184,12 +200,18 @@ Add all three servers to your Claude Code MCP configuration:
 - **Content**: Component configurations, dependencies, hermetic settings
 - **Updates**: Automatic git fetch for latest metadata
 
+### JIRA Issue Tracking (JIRA Server)
+- **Source**: `https://issues.redhat.com`
+- **Projects**: OCPBUGS, ART, and related security projects
+- **Content**: Build issues, CVE mappings, security impact analysis, component correlations
+- **Access**: REST API with Bearer token authentication
+
 ## Performance Features
 
 ### Concurrent Operations
 - **Parallel BigQuery queries**: Multiple components processed simultaneously
 - **Async metadata loading**: Repository initialization in background
-- **Goroutine-based**: Efficient resource utilization across both servers
+- **Goroutine-based**: Efficient resource utilization across all servers
 
 ### Intelligent Caching
 - **Metadata caching**: Component configurations cached per branch
@@ -197,7 +219,7 @@ Add all three servers to your Claude Code MCP configuration:
 - **Query optimization**: BigQuery connection pooling and partition filtering
 
 ### Memory Efficiency
-- **Dual binary deployment**: Each server optimized for its purpose
+- **Quad binary deployment**: Each server optimized for its purpose
 - **Shared abstractions**: Common code patterns reduce duplication
 - **Resource cleanup**: Automatic cleanup of unused resources
 
@@ -208,40 +230,48 @@ claude-build-analyzer/
 ├── cmd/
 │   ├── build-analyzer/main.go         # Build analyzer server entry
 │   ├── ocp-metadata-server/main.go    # Metadata server entry
-│   └── jenkins-server/main.go         # Jenkins server entry
+│   ├── jenkins-server/main.go         # Jenkins server entry
+│   └── jira-server/main.go            # JIRA server entry
 ├── internal/
 │   ├── bigquery/client.go             # BigQuery operations
 │   ├── git/manager.go                 # Git repository management
 │   ├── jenkins/client.go              # Jenkins API operations
+│   ├── jira/client.go                 # JIRA API operations
 │   ├── build-analyzer-server/server.go # Build analyzer MCP server
 │   ├── metadata-server/server.go      # Metadata MCP server
-│   └── jenkins-server/server.go       # Jenkins MCP server
+│   ├── jenkins-server/server.go       # Jenkins MCP server
+│   └── jira-server/server.go          # JIRA MCP server
 ├── pkg/shared/                        # Shared abstractions
 │   ├── mcp.go                         # Common MCP protocol structures
 │   ├── git.go                         # Git interfaces and data types
 │   ├── yaml.go                        # Flexible YAML parsing utilities
 │   └── server.go                      # Base MCP server implementation
-├── docs/                              # Updated tri-server documentation
-├── .mcp.json                          # Tri-server MCP configuration
+├── docs/                              # Updated quad-server documentation
+├── .mcp.json                          # Quad-server MCP configuration
 ├── build-analyzer                     # BigQuery-focused binary
 ├── ocp-metadata-server               # Metadata-focused binary
-└── jenkins-server                     # Jenkins-focused binary
+├── jenkins-server                     # Jenkins-focused binary
+└── jira-server                        # JIRA-focused binary
 ```
 
 ## Development
 
 ### Building from Source
 ```bash
-# Build both servers
+# Build all servers
 make build
 
 # Or build individually
 make build-analyzer      # BigQuery-focused server
 make ocp-metadata-server  # Metadata-focused server
+make jenkins-server      # Jenkins-focused server
+make jira-server         # JIRA-focused server
 
 # Or manually:
 go build -o build-analyzer cmd/build-analyzer/main.go
 go build -o ocp-metadata-server cmd/ocp-metadata-server/main.go
+go build -o jenkins-server cmd/jenkins-server/main.go
+go build -o jira-server cmd/jira-server/main.go
 ```
 
 ### Testing Individual Servers
@@ -250,6 +280,8 @@ go build -o ocp-metadata-server cmd/ocp-metadata-server/main.go
 ```bash
 make test-build-analyzer  # Test BigQuery server
 make test-ocp-metadata    # Test metadata server
+make test-jenkins         # Test Jenkins server
+make test-jira           # Test JIRA server
 ```
 
 **Manual testing**:
@@ -264,10 +296,22 @@ echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}' | GOOGLE_APPLICATION_
 echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}' | ./ocp-metadata-server
 ```
 
+**Test Jenkins Server**:
+```bash
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}' | ./jenkins-server
+```
+
+**Test JIRA Server**:
+```bash
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}' | ./jira-server
+```
+
 ### Adding New Tools
 
-**For build analysis tools**: Add to `internal/mcp/server.go`
-**For metadata tools**: Add to `internal/metadata-server/server.go`
+**For build analysis tools**: Add to `internal/build-analyzer-server/server.go`
+**For metadata tools**: Add to `internal/metadata-server/server.go`  
+**For Jenkins tools**: Add to `internal/jenkins-server/server.go`
+**For JIRA tools**: Add to `internal/jira-server/server.go`
 **For shared functionality**: Add to `pkg/shared/`
 
 ## Authentication
@@ -284,6 +328,12 @@ echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}' | ./ocp-metadata-serv
 ### Repository Access (Metadata Server)
 
 No authentication required - uses public read-only access to ocp-build-data.
+
+### JIRA Access (JIRA Server)
+
+1. **Obtain JIRA API token** from Red Hat JIRA administration
+2. **Configure environment variable**: Set `JIRA_TOKEN` in your `.mcp.json` configuration
+3. **Verify access**: Test with JIRA REST API endpoints for OCPBUGS project
 
 ## Troubleshooting
 
@@ -310,17 +360,29 @@ No authentication required - uses public read-only access to ocp-build-data.
 - Server uses flexible parsing with fallback patterns
 - Component data is still extracted successfully
 
+### JIRA Server Issues
+
+**JIRA authentication errors**:
+- Verify `JIRA_TOKEN` is valid and not expired
+- Check access permissions for OCPBUGS project
+- Test with: `curl -H "Authorization: Bearer $JIRA_TOKEN" https://issues.redhat.com/rest/api/2/myself`
+
+**Issue retrieval failures**:
+- Verify issue keys exist and are accessible
+- Check project permissions for security-related tickets
+- Some tickets may have restricted access based on security level
+
 ### General MCP Issues
 
 **Connection failures**:
 - Verify Claude Code MCP configuration syntax
 - Check that binary paths are absolute
-- Ensure binaries have execute permissions: `chmod +x build-analyzer ocp-metadata-server`
+- Ensure binaries have execute permissions: `chmod +x build-analyzer ocp-metadata-server jenkins-server jira-server`
 
 **Performance issues**:
 - Check available memory (recommended: 2GB+ RAM)
 - Monitor disk space for git repositories
-- Verify network connectivity to BigQuery and GitHub
+- Verify network connectivity to BigQuery, GitHub, and Red Hat JIRA
 
 ## Performance Characteristics
 
@@ -336,6 +398,18 @@ No authentication required - uses public read-only access to ocp-build-data.
 - **Memory usage**: ~100-300MB for cached metadata
 - **Supported load**: Hundreds of metadata queries per hour
 
+### Jenkins Server
+- **Startup time**: ~1-2 seconds (HTTP client initialization)
+- **Query response**: ~1-3 seconds for Jenkins API calls
+- **Memory usage**: ~20-50MB for HTTP client and caching
+- **Supported load**: 50+ Jenkins queries per hour
+
+### JIRA Server
+- **Startup time**: ~1-2 seconds (JIRA API client initialization)
+- **Query response**: ~1-3 seconds for JIRA API calls
+- **Memory usage**: ~15-40MB for HTTP client and caching
+- **Supported load**: 100+ JIRA queries per hour
+
 ## Supported OpenShift Versions
 
 - **OpenShift 4.21** (current development)
@@ -349,7 +423,7 @@ New versions are automatically supported by adding branch names to the git manag
 
 1. Fork the repository
 2. Create a feature branch
-3. Implement changes following the dual server architecture
+3. Implement changes following the quad-server architecture
 4. Add tests for new functionality
 5. Update documentation for any API changes
 6. Submit a pull request

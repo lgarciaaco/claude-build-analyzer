@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	jenkinsserver "github.com/lgarciaaco/claude-build-analyzer/internal/jenkins-server"
+	jiraserver "github.com/lgarciaaco/claude-build-analyzer/internal/jira-server"
 )
 
 func main() {
@@ -29,23 +29,23 @@ func main() {
 		cancel()
 	}()
 
-	// Create and initialize Jenkins MCP server
-	server, err := jenkinsserver.NewServer(ctx)
+	// Create and initialize JIRA MCP server
+	server, err := jiraserver.NewServer(ctx)
 	if err != nil {
-		log.Fatalf("Failed to create Jenkins MCP server: %v", err)
+		log.Fatalf("Failed to create JIRA MCP server: %v", err)
 	}
 	defer server.Close()
 
 	// Initialize server
 	if err := server.Initialize(); err != nil {
-		log.Fatalf("Failed to initialize Jenkins MCP server: %v", err)
+		log.Fatalf("Failed to initialize JIRA MCP server: %v", err)
 	}
 
 	// Run the MCP server
-	log.Println("Claude Jenkins MCP Server starting...")
+	log.Println("Claude JIRA MCP Server starting...")
 	if err := server.Run(); err != nil {
-		log.Fatalf("Jenkins MCP server failed: %v", err)
+		log.Fatalf("JIRA MCP server failed: %v", err)
 	}
 
-	log.Println("Claude Jenkins MCP Server stopped")
+	log.Println("Claude JIRA MCP Server stopped")
 }

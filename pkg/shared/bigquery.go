@@ -51,24 +51,24 @@ type BuildComparison struct {
 
 // TaskRunRecord represents a TaskRun record from BigQuery
 type TaskRunRecord struct {
-	CreationTime    time.Time                `bigquery:"creation_time" json:"creation_time"`
-	Task            string                   `bigquery:"task" json:"task"`
-	TaskRun         string                   `bigquery:"task_run" json:"task_run"`
-	TaskRunUID      string                   `bigquery:"task_run_uid" json:"task_run_uid"`
-	PipelineRun     string                   `bigquery:"pipeline_run" json:"pipeline_run"`
-	PipelineRunUID  string                   `bigquery:"pipeline_run_uid" json:"pipeline_run_uid"`
-	PodName         string                   `bigquery:"pod_name" json:"pod_name"`
-	PodPhase        string                   `bigquery:"pod_phase" json:"pod_phase"`
-	ScheduledTime   bigquery.NullTimestamp   `bigquery:"scheduled_time" json:"scheduled_time,omitempty"`
-	InitializedTime bigquery.NullTimestamp   `bigquery:"initialized_time" json:"initialized_time,omitempty"`
-	StartTime       bigquery.NullTimestamp   `bigquery:"start_time" json:"start_time,omitempty"`
-	MaxFinishedTime bigquery.NullTimestamp   `bigquery:"max_finished_time" json:"max_finished_time,omitempty"`
-	Containers      []ContainerInfo          `bigquery:"containers" json:"containers"`
-	ContainersJSON  string                   `bigquery:"containers_json" json:"-"`
-	CaptureTime     time.Time                `bigquery:"capture_time" json:"capture_time"`
-	Success         bool                     `bigquery:"success" json:"success"`
-	BuildID         string                   `bigquery:"build_id" json:"build_id,omitempty"`
-	RecordID        string                   `bigquery:"record_id" json:"record_id,omitempty"`
+	CreationTime    time.Time              `bigquery:"creation_time" json:"creation_time"`
+	Task            string                 `bigquery:"task" json:"task"`
+	TaskRun         string                 `bigquery:"task_run" json:"task_run"`
+	TaskRunUID      string                 `bigquery:"task_run_uid" json:"task_run_uid"`
+	PipelineRun     string                 `bigquery:"pipeline_run" json:"pipeline_run"`
+	PipelineRunUID  string                 `bigquery:"pipeline_run_uid" json:"pipeline_run_uid"`
+	PodName         string                 `bigquery:"pod_name" json:"pod_name"`
+	PodPhase        string                 `bigquery:"pod_phase" json:"pod_phase"`
+	ScheduledTime   bigquery.NullTimestamp `bigquery:"scheduled_time" json:"scheduled_time,omitempty"`
+	InitializedTime bigquery.NullTimestamp `bigquery:"initialized_time" json:"initialized_time,omitempty"`
+	StartTime       bigquery.NullTimestamp `bigquery:"start_time" json:"start_time,omitempty"`
+	MaxFinishedTime bigquery.NullTimestamp `bigquery:"max_finished_time" json:"max_finished_time,omitempty"`
+	Containers      []ContainerInfo        `bigquery:"containers" json:"containers"`
+	ContainersJSON  string                 `bigquery:"containers_json" json:"-"`
+	CaptureTime     time.Time              `bigquery:"capture_time" json:"capture_time"`
+	Success         bool                   `bigquery:"success" json:"success"`
+	BuildID         string                 `bigquery:"build_id" json:"build_id,omitempty"`
+	RecordID        string                 `bigquery:"record_id" json:"record_id,omitempty"`
 }
 
 // ContainerInfo represents container information within a TaskRun
@@ -94,11 +94,11 @@ func (c *ContainerInfo) GetLogOutput() string {
 
 // BuildLogAnalysis represents the result of analyzing build logs
 type BuildLogAnalysis struct {
-	BuildInfo       BuildRecord      `json:"buildInfo"`
-	LogUrls         map[string]string `json:"logUrls"`
-	Architecture    []string         `json:"architecture"`
-	TaskRuns        []TaskRunRecord  `json:"taskRuns,omitempty"`
-	FailedContainers []ContainerInfo  `json:"failedContainers,omitempty"`
-	ErrorSummary    []string         `json:"errorSummary,omitempty"`
-	PossibleIssues  []string         `json:"possibleIssues,omitempty"`
+	BuildInfo        BuildRecord       `json:"buildInfo"`
+	LogUrls          map[string]string `json:"logUrls"`
+	Architecture     []string          `json:"architecture"`
+	TaskRuns         []TaskRunRecord   `json:"taskRuns,omitempty"`
+	FailedContainers []ContainerInfo   `json:"failedContainers,omitempty"`
+	ErrorSummary     []string          `json:"errorSummary,omitempty"`
+	PossibleIssues   []string          `json:"possibleIssues,omitempty"`
 }
