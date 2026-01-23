@@ -1,5 +1,13 @@
 # CLAUDE.md - Tri-Server MCP Build Analysis System
 
+## Essential Documentation
+
+**📋 READ FIRST**: Every session should start by reading [docs/ANALYSIS_METHODOLOGY.md](docs/ANALYSIS_METHODOLOGY.md) which provides:
+- Evidence-based investigation workflow
+- Mandatory metadata-first protocol  
+- Tool selection and usage patterns
+- Performance optimization guidelines
+
 ## Project Purpose
 This tri-server Go-based MCP system enables Claude to analyze OpenShift Container Platform build failures with natural language queries. The system uses three specialized servers for optimal performance and maintainability.
 
@@ -317,9 +325,7 @@ Every build analysis request MUST follow this exact sequence:
 
 ## Analysis Methodology
 
-**For detailed analysis workflows and investigation patterns, see [docs/ANALYSIS_METHODOLOGY.md](docs/ANALYSIS_METHODOLOGY.md)**
-
-This methodology document provides:
+**See [docs/ANALYSIS_METHODOLOGY.md](docs/ANALYSIS_METHODOLOGY.md)** for complete workflows including:
 - Evidence-based investigation approach
 - Component identification strategies  
 - Generic failure analysis patterns

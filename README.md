@@ -7,10 +7,14 @@ A high-performance tri-server MCP system written in Go that enables Claude to an
 This system provides Claude with comprehensive build failure analysis through three specialized MCP servers:
 
 - **Build Analyzer Server**: BigQuery-based build failure analysis and log correlation
-- **OCP Metadata Server**: Component metadata access from ocp-build-data repositories
+- **OCP Metadata Server**: Component metadata access from ocp-build-data repositories  
 - **Jenkins Server**: Jenkins API access for build context and console log analysis
 
 **Example Usage**: Ask Claude "why did ironic fail to build in 4.21?" and get detailed analysis correlating build failures with component configuration changes.
+
+## Quick Start
+
+See [Analysis Methodology](docs/ANALYSIS_METHODOLOGY.md) for complete usage workflows and investigation patterns.
 
 ## Architecture
 
@@ -143,7 +147,7 @@ Add all three servers to your Claude Code MCP configuration:
 
 5. **Root Cause Correlation**: Claude correlates metadata + build data for evidence-based diagnosis
 
-**For complete analysis workflows and investigation patterns, see [docs/ANALYSIS_METHODOLOGY.md](docs/ANALYSIS_METHODOLOGY.md)**
+**For complete analysis workflows, see [docs/ANALYSIS_METHODOLOGY.md](docs/ANALYSIS_METHODOLOGY.md)**
 
 ## Available Tools
 
@@ -163,8 +167,6 @@ Add all three servers to your Claude Code MCP configuration:
 - **`correlate_jenkins_builds`**: Correlate Jenkins execution with BigQuery build records
 
 **Process Focus**: Use `GetToolList()` on any server to discover all available methods and parameters dynamically.
-
-**For detailed tool usage and analysis workflows, see [docs/ANALYSIS_METHODOLOGY.md](docs/ANALYSIS_METHODOLOGY.md)**
 
 ## Data Sources
 
@@ -352,8 +354,8 @@ New versions are automatically supported by adding branch names to the git manag
 5. Update documentation for any API changes
 6. Submit a pull request
 
-### Understanding the Analysis Approach
-Before contributing analysis features, review [docs/ANALYSIS_METHODOLOGY.md](docs/ANALYSIS_METHODOLOGY.md) to understand the evidence-based analysis principles and systematic investigation workflows.
+### Analysis Approach
+Review [docs/ANALYSIS_METHODOLOGY.md](docs/ANALYSIS_METHODOLOGY.md) for evidence-based analysis principles and systematic investigation workflows.
 
 ### Code Guidelines
 - Follow Go conventions and `gofmt` formatting
