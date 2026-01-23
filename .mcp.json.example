@@ -1,0 +1,20 @@
+{
+	"mcpServers": {
+		"build-analyzer": {
+			"command": "./build-analyzer",
+			"env": {
+				"GOOGLE_APPLICATION_CREDENTIALS": "./.credentials/google.json"
+			}
+		},
+		"ocp-metadata": {
+			"command": "./ocp-metadata-server"
+		},
+		"jenkins-server": {
+			"command": "./jenkins-server",
+			"env": {
+				"JENKINS_USERNAME": "your-jenkins-username",
+				"JENKINS_TOKEN": "your-jenkins-api-token"
+			}
+		}
+	}
+}
