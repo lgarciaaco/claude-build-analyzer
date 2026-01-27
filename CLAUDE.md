@@ -98,7 +98,7 @@ This quad-server Go-based MCP system enables Claude to analyze OpenShift Contain
 - **Access Level**: Can retrieve logs, job details, and build parameters from all Konflux jobs
 
 **Responsibilities**:
-- Query Konflux build jobs under job/aos-cd-builds/job/build%252Focp4-konflux/
+- Query multiple Jenkins job projects (ocp4-konflux, prepare-release-konflux)
 - Retrieve console logs with failure pattern analysis
 - Extract build parameters (BUILD_VERSION, ASSEMBLY, DOOZER_DATA_GITREF)
 - Correlate Jenkins execution with BigQuery build records
@@ -106,6 +106,68 @@ This quad-server Go-based MCP system enables Claude to analyze OpenShift Contain
 - Support assembly-based filtering (stream, test, standard, custom, preview)
 
 **Key Process Role**: Provides build execution context that enhances BigQuery failure analysis. Essential for extracting accurate version/assembly parameters from actual build jobs.
+
+### Jenkins Job Project Selection
+
+**🔑 CRITICAL: Claude MUST select the appropriate Jenkins job project for each Jenkins MCP tool call**
+
+#### Available Job Projects
+
+**ocp4-konflux (Default)**:
+- **Purpose**: Component image builds (ironic, oauth-server, etc.)
+- **When to use**: Standard build failure analysis, component builds
+- **User keywords**: "konflux", "build", "component", "image"
+- **Example**: "analyze konflux build 48594"
+
+**prepare-release-konflux**:
+- **Purpose**: Release preparation builds (contains JIRA ticket references) 
+- **When to use**: Release preparation failures, JIRA ticket analysis
+- **User keywords**: "prepare", "release", "prepare-release"
+- **Example**: "tell me errors in prepare release 83975"
+
+#### Claude Decision Rules
+
+**Step 1: Parse User Query**
+Look for these keywords in user input:
+
+**prepare-release-konflux indicators:**
+- "prepare"
+- "release"
+- "prepare-release" 
+- "prepare release"
+
+**ocp4-konflux indicators (default):**
+- "konflux"
+- "build"
+- "component"
+- No specific keywords found
+
+**Step 2: Select Project**
+```
+IF user mentions "prepare" OR "release" OR "prepare-release"
+   THEN jobProject = "prepare-release-konflux"
+ELSE
+   jobProject = "ocp4-konflux" (default)
+```
+
+**Step 3: Add Parameter**
+Include `jobProject` parameter in ALL Jenkins MCP tool calls:
+```json
+{
+  "buildNumber": 48594,
+  "jobProject": "ocp4-konflux"
+}
+```
+
+#### Implementation Checklist
+
+When calling Jenkins MCP tools, Claude must:
+1. ✅ **Parse user query** for job project keywords
+2. ✅ **Select job project** using decision rules above
+3. ✅ **Include jobProject parameter** in MCP call
+4. ✅ **Document selection** in analysis response
+
+**Never**: Call Jenkins MCP tools without the `jobProject` parameter.
 
 ### JIRA Server
 **Data Source**: JIRA REST API at issues.redhat.com

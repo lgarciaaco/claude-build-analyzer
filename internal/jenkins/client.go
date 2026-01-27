@@ -19,6 +19,30 @@ type Client struct {
 	auth       *JenkinsAuth
 }
 
+// JobProject represents a Jenkins job project configuration
+type JobProject struct {
+	Name        string
+	Path        string
+	Description string
+}
+
+// KnownJobProjects maps job project IDs to their configurations
+var KnownJobProjects = map[string]JobProject{
+	"ocp4-konflux": {
+		Name:        "ocp4-konflux",
+		Path:        "job/aos-cd-builds/job/build%252Focp4-konflux",
+		Description: "OpenShift 4 Konflux component builds",
+	},
+	"prepare-release-konflux": {
+		Name:        "prepare-release-konflux",
+		Path:        "job/aos-cd-builds/job/build%252Fprepare-release-konflux",
+		Description: "Release preparation and validation builds",
+	},
+}
+
+// DefaultJobProject is the default job project when none specified
+const DefaultJobProject = "ocp4-konflux"
+
 // JenkinsAuth holds authentication credentials for Jenkins API
 type JenkinsAuth struct {
 	Username string
@@ -70,8 +94,31 @@ func NewClient(baseURL string, auth *JenkinsAuth) *Client {
 	}
 }
 
+// getJobPath returns the Jenkins path for a given job project
+func (c *Client) getJobPath(jobProject string) (string, error) {
+	if jobProject == "" {
+		jobProject = DefaultJobProject
+	}
+
+	if project, exists := KnownJobProjects[jobProject]; exists {
+		return project.Path, nil
+	}
+
+	return "", fmt.Errorf("unknown job project: %s (valid options: %v)",
+		jobProject, getJobProjectNames())
+}
+
+// getJobProjectNames returns a list of valid job project names
+func getJobProjectNames() []string {
+	var names []string
+	for name := range KnownJobProjects {
+		names = append(names, name)
+	}
+	return names
+}
+
 // QueryKonfluxBuilds queries Jenkins for Konflux builds matching the criteria
-func (c *Client) QueryKonfluxBuilds(ctx context.Context, component, assembly, group string, days int) ([]KonfluxJob, error) {
+func (c *Client) QueryKonfluxBuilds(ctx context.Context, component, assembly, group string, days int, jobProject string) ([]KonfluxJob, error) {
 	if assembly == "" {
 		assembly = "stream"
 	}
@@ -79,12 +126,18 @@ func (c *Client) QueryKonfluxBuilds(ctx context.Context, component, assembly, gr
 		group = "openshift-4.21"
 	}
 
-	// Build Jenkins API URL for aos-cd-builds/build%252Focp4-konflux
-	jobPath := "job/aos-cd-builds/job/build%252Focp4-konflux/api/json"
+	// Get job path for the specified project
+	jobPath, err := c.getJobPath(jobProject)
+	if err != nil {
+		return nil, fmt.Errorf("invalid job project: %w", err)
+	}
+
+	// Build Jenkins API URL
+	apiPath := jobPath + "/api/json"
 	params := url.Values{}
 	params.Set("tree", "builds[number,url,result,timestamp,duration,actions[parameters[name,value]]]")
 
-	apiURL := fmt.Sprintf("%s/%s?%s", c.baseURL, jobPath, params.Encode())
+	apiURL := fmt.Sprintf("%s/%s?%s", c.baseURL, apiPath, params.Encode())
 
 	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
 	if err != nil {
@@ -120,7 +173,7 @@ func (c *Client) QueryKonfluxBuilds(ctx context.Context, component, assembly, gr
 			continue
 		}
 
-		job := c.convertToKonfluxJob(build)
+		job := c.convertToKonfluxJob(build, jobProject)
 
 		// Filter by component if specified
 		if component != "" && !strings.Contains(strings.ToLower(job.Component), strings.ToLower(component)) {
@@ -147,8 +200,13 @@ func (c *Client) QueryKonfluxBuilds(ctx context.Context, component, assembly, gr
 }
 
 // GetJenkinsLogs retrieves console logs for a specific Jenkins build
-func (c *Client) GetJenkinsLogs(ctx context.Context, buildNumber int) (string, error) {
-	logURL := fmt.Sprintf("%s/job/aos-cd-builds/job/build%%252Focp4-konflux/%d/consoleText", c.baseURL, buildNumber)
+func (c *Client) GetJenkinsLogs(ctx context.Context, buildNumber int, jobProject string) (string, error) {
+	jobPath, err := c.getJobPath(jobProject)
+	if err != nil {
+		return "", fmt.Errorf("invalid job project: %w", err)
+	}
+
+	logURL := fmt.Sprintf("%s/%s/%d/consoleText", c.baseURL, jobPath, buildNumber)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", logURL, nil)
 	if err != nil {
@@ -220,8 +278,13 @@ func (c *Client) AnalyzeJenkinsLogs(logs string) []string {
 }
 
 // GetBuildDetails retrieves detailed information for a specific build
-func (c *Client) GetBuildDetails(ctx context.Context, buildNumber int) (*KonfluxJob, error) {
-	buildURL := fmt.Sprintf("%s/job/aos-cd-builds/job/build%%252Focp4-konflux/%d/api/json", c.baseURL, buildNumber)
+func (c *Client) GetBuildDetails(ctx context.Context, buildNumber int, jobProject string) (*KonfluxJob, error) {
+	jobPath, err := c.getJobPath(jobProject)
+	if err != nil {
+		return nil, fmt.Errorf("invalid job project: %w", err)
+	}
+
+	buildURL := fmt.Sprintf("%s/%s/%d/api/json", c.baseURL, jobPath, buildNumber)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", buildURL, nil)
 	if err != nil {
@@ -247,19 +310,25 @@ func (c *Client) GetBuildDetails(ctx context.Context, buildNumber int) (*Konflux
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	job := c.convertToKonfluxJob(build)
+	job := c.convertToKonfluxJob(build, jobProject)
 	return &job, nil
 }
 
 // convertToKonfluxJob converts Jenkins build data to KonfluxJob
-func (c *Client) convertToKonfluxJob(build JenkinsBuild) KonfluxJob {
+func (c *Client) convertToKonfluxJob(build JenkinsBuild, jobProject string) KonfluxJob {
+	// Get job path for URL construction, fallback to default if error
+	jobPath, err := c.getJobPath(jobProject)
+	if err != nil {
+		jobPath, _ = c.getJobPath(DefaultJobProject)
+	}
+
 	job := KonfluxJob{
-		Name:        fmt.Sprintf("build-ocp4-konflux-%d", build.Number),
+		Name:        fmt.Sprintf("build-%s-%d", jobProject, build.Number),
 		BuildNumber: build.Number,
 		Status:      build.Result,
 		Timestamp:   time.Unix(build.Timestamp/1000, 0),
 		Duration:    time.Duration(build.Duration) * time.Millisecond,
-		LogURL:      fmt.Sprintf("%s/job/aos-cd-builds/job/build%%252Focp4-konflux/%d/console", c.baseURL, build.Number),
+		LogURL:      fmt.Sprintf("%s/%s/%d/console", c.baseURL, jobPath, build.Number),
 		Parameters:  make(map[string]string),
 		Assembly:    "stream",         // default
 		Group:       "openshift-4.21", // default
