@@ -156,7 +156,7 @@ func TestClient_convertToKonfluxJob(t *testing.T) {
 		},
 	}
 
-	job := client.convertToKonfluxJob(build)
+	job := client.convertToKonfluxJob(build, "ocp4-konflux")
 
 	if job.BuildNumber != 123 {
 		t.Errorf("Expected BuildNumber 123, got %d", job.BuildNumber)
@@ -199,7 +199,7 @@ func TestClient_convertToKonfluxJob_Defaults(t *testing.T) {
 		}{}, // No parameters
 	}
 
-	job := client.convertToKonfluxJob(build)
+	job := client.convertToKonfluxJob(build, "ocp4-konflux")
 
 	if job.Assembly != "stream" {
 		t.Errorf("Expected default Assembly 'stream', got '%s'", job.Assembly)
@@ -353,7 +353,7 @@ func TestClient_convertToKonfluxJob_MixedParameterTypes(t *testing.T) {
 		},
 	}
 
-	job := client.convertToKonfluxJob(build)
+	job := client.convertToKonfluxJob(build, "ocp4-konflux")
 
 	// Test string parameter conversion
 	if job.Component != "oauth-server" {
@@ -370,4 +370,183 @@ func TestClient_convertToKonfluxJob_MixedParameterTypes(t *testing.T) {
 	if job.Parameters["retry_count"] != "3" {
 		t.Errorf("Expected retry_count parameter '3', got '%s'", job.Parameters["retry_count"])
 	}
+}
+
+// Tests for Job Project functionality
+
+func TestKnownJobProjects(t *testing.T) {
+	// Test that all expected job projects are defined
+	expectedProjects := []string{"ocp4-konflux", "prepare-release-konflux"}
+
+	for _, projectName := range expectedProjects {
+		project, exists := KnownJobProjects[projectName]
+		if !exists {
+			t.Errorf("Expected job project '%s' to exist", projectName)
+			continue
+		}
+
+		if project.Name != projectName {
+			t.Errorf("Expected project name '%s', got '%s'", projectName, project.Name)
+		}
+		if project.Path == "" {
+			t.Errorf("Expected project path to be non-empty for '%s'", projectName)
+		}
+		if project.Description == "" {
+			t.Errorf("Expected project description to be non-empty for '%s'", projectName)
+		}
+	}
+}
+
+func TestClient_getJobPath_ValidProjects(t *testing.T) {
+	client := NewClient("https://jenkins.example.com", nil)
+
+	tests := []struct {
+		projectName  string
+		expectedPath string
+	}{
+		{
+			projectName:  "ocp4-konflux",
+			expectedPath: "job/aos-cd-builds/job/build%252Focp4-konflux",
+		},
+		{
+			projectName:  "prepare-release-konflux",
+			expectedPath: "job/aos-cd-builds/job/build%252Fprepare-release-konflux",
+		},
+		{
+			projectName:  "", // default
+			expectedPath: "job/aos-cd-builds/job/build%252Focp4-konflux",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.projectName, func(t *testing.T) {
+			path, err := client.getJobPath(tt.projectName)
+			if err != nil {
+				t.Errorf("Unexpected error for project '%s': %v", tt.projectName, err)
+			}
+			if path != tt.expectedPath {
+				t.Errorf("Expected path '%s', got '%s'", tt.expectedPath, path)
+			}
+		})
+	}
+}
+
+func TestClient_getJobPath_InvalidProject(t *testing.T) {
+	client := NewClient("https://jenkins.example.com", nil)
+
+	_, err := client.getJobPath("invalid-project")
+	if err == nil {
+		t.Error("Expected error for invalid project, got nil")
+	}
+
+	expectedErrorMsg := "unknown job project: invalid-project"
+	if !containsString(err.Error(), expectedErrorMsg) {
+		t.Errorf("Expected error to contain '%s', got '%s'", expectedErrorMsg, err.Error())
+	}
+}
+
+func TestClient_convertToKonfluxJob_WithJobProject(t *testing.T) {
+	client := NewClient("https://jenkins.example.com", nil)
+
+	build := JenkinsBuild{
+		Number:    123,
+		Result:    "FAILURE",
+		Timestamp: 1640995200000,
+		Duration:  300000,
+	}
+
+	tests := []struct {
+		jobProject     string
+		expectedName   string
+		expectedLogURL string
+	}{
+		{
+			jobProject:     "ocp4-konflux",
+			expectedName:   "build-ocp4-konflux-123",
+			expectedLogURL: "https://jenkins.example.com/job/aos-cd-builds/job/build%252Focp4-konflux/123/console",
+		},
+		{
+			jobProject:     "prepare-release-konflux",
+			expectedName:   "build-prepare-release-konflux-123",
+			expectedLogURL: "https://jenkins.example.com/job/aos-cd-builds/job/build%252Fprepare-release-konflux/123/console",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.jobProject, func(t *testing.T) {
+			job := client.convertToKonfluxJob(build, tt.jobProject)
+
+			if job.Name != tt.expectedName {
+				t.Errorf("Expected Name '%s', got '%s'", tt.expectedName, job.Name)
+			}
+			if job.LogURL != tt.expectedLogURL {
+				t.Errorf("Expected LogURL '%s', got '%s'", tt.expectedLogURL, job.LogURL)
+			}
+		})
+	}
+}
+
+func TestClient_convertToKonfluxJob_InvalidJobProject(t *testing.T) {
+	client := NewClient("https://jenkins.example.com", nil)
+
+	build := JenkinsBuild{
+		Number:    123,
+		Result:    "FAILURE",
+		Timestamp: 1640995200000,
+		Duration:  300000,
+	}
+
+	// Should fallback to default project when invalid project provided
+	job := client.convertToKonfluxJob(build, "invalid-project")
+
+	// Should use default project path for URL
+	expectedLogURL := "https://jenkins.example.com/job/aos-cd-builds/job/build%252Focp4-konflux/123/console"
+	if job.LogURL != expectedLogURL {
+		t.Errorf("Expected fallback LogURL '%s', got '%s'", expectedLogURL, job.LogURL)
+	}
+}
+
+func TestDefaultJobProject(t *testing.T) {
+	if DefaultJobProject != "ocp4-konflux" {
+		t.Errorf("Expected DefaultJobProject 'ocp4-konflux', got '%s'", DefaultJobProject)
+	}
+}
+
+func TestGetJobProjectNames(t *testing.T) {
+	names := getJobProjectNames()
+
+	expectedNames := []string{"ocp4-konflux", "prepare-release-konflux"}
+	if len(names) != len(expectedNames) {
+		t.Errorf("Expected %d job project names, got %d", len(expectedNames), len(names))
+	}
+
+	for _, expectedName := range expectedNames {
+		found := false
+		for _, name := range names {
+			if name == expectedName {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Expected job project name '%s' not found in: %v", expectedName, names)
+		}
+	}
+}
+
+// Helper function for string contains check
+func containsString(haystack, needle string) bool {
+	return len(haystack) >= len(needle) &&
+		(needle == "" || haystack[0:len(needle)] == needle ||
+			len(haystack) > len(needle) && haystack[len(haystack)-len(needle):] == needle ||
+			findInString(haystack, needle))
+}
+
+func findInString(haystack, needle string) bool {
+	for i := 0; i <= len(haystack)-len(needle); i++ {
+		if haystack[i:i+len(needle)] == needle {
+			return true
+		}
+	}
+	return false
 }

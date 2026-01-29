@@ -144,6 +144,10 @@ func (s *Server) GetToolList() shared.ToolList {
 							Type:        "array",
 							Description: "Filter by build status (SUCCESS, FAILURE, ABORTED, etc.)",
 						},
+						"jobProject": {
+							Type:        "string",
+							Description: "Jenkins job project (ocp4-konflux, prepare-release-konflux). Claude selects based on user context. Defaults to 'ocp4-konflux'.",
+						},
 					},
 				},
 			},
@@ -177,6 +181,10 @@ func (s *Server) GetToolList() shared.ToolList {
 							Type:        "boolean",
 							Description: "Retrieve full console log instead of just last 50 lines (default: false)",
 						},
+						"jobProject": {
+							Type:        "string",
+							Description: "Jenkins job project (ocp4-konflux, prepare-release-konflux). Claude selects based on user context. Defaults to 'ocp4-konflux'.",
+						},
 					},
 				},
 			},
@@ -205,6 +213,10 @@ func (s *Server) GetToolList() shared.ToolList {
 						"timeRange": {
 							Type:        "number",
 							Description: "Time range in hours for correlation matching (default: 24)",
+						},
+						"jobProject": {
+							Type:        "string",
+							Description: "Jenkins job project (ocp4-konflux, prepare-release-konflux). Claude selects based on user context. Defaults to 'ocp4-konflux'.",
 						},
 					},
 				},
@@ -273,8 +285,13 @@ func (s *Server) queryJenkinsBuilds(ctx context.Context, args map[string]interfa
 		}
 	}
 
-	// Query Jenkins for Konflux builds
-	jobs, err := s.jenkinsClient.QueryKonfluxBuilds(ctx, query.ComponentName, query.Assembly, query.Group, query.Days)
+	jobProject := "ocp4-konflux" // default
+	if jp, ok := args["jobProject"].(string); ok && jp != "" {
+		jobProject = jp
+	}
+
+	// Query Jenkins for builds
+	jobs, err := s.jenkinsClient.QueryKonfluxBuilds(ctx, query.ComponentName, query.Assembly, query.Group, query.Days, jobProject)
 	if err != nil {
 		return shared.ToolResult{}, fmt.Errorf("failed to query Jenkins builds: %w", err)
 	}
@@ -304,6 +321,11 @@ func (s *Server) analyzeJenkinsLogs(ctx context.Context, args map[string]interfa
 	var buildNumber int
 	var found bool
 
+	jobProject := "ocp4-konflux" // default
+	if jp, ok := args["jobProject"].(string); ok && jp != "" {
+		jobProject = jp
+	}
+
 	// Check if build number is provided directly
 	if bn, ok := args["buildNumber"].(float64); ok {
 		buildNumber = int(bn)
@@ -323,7 +345,7 @@ func (s *Server) analyzeJenkinsLogs(ctx context.Context, args map[string]interfa
 			days = int(d)
 		}
 
-		jobs, err := s.jenkinsClient.QueryKonfluxBuilds(ctx, componentName, assembly, group, days)
+		jobs, err := s.jenkinsClient.QueryKonfluxBuilds(ctx, componentName, assembly, group, days, jobProject)
 		if err != nil {
 			return shared.ToolResult{}, fmt.Errorf("failed to find builds for component %s: %w", componentName, err)
 		}
@@ -345,13 +367,13 @@ func (s *Server) analyzeJenkinsLogs(ctx context.Context, args map[string]interfa
 	}
 
 	// Get build details
-	buildDetails, err := s.jenkinsClient.GetBuildDetails(ctx, buildNumber)
+	buildDetails, err := s.jenkinsClient.GetBuildDetails(ctx, buildNumber, jobProject)
 	if err != nil {
 		return shared.ToolResult{}, fmt.Errorf("failed to get build details for %d: %w", buildNumber, err)
 	}
 
 	// Retrieve console logs
-	logs, err := s.jenkinsClient.GetJenkinsLogs(ctx, buildNumber)
+	logs, err := s.jenkinsClient.GetJenkinsLogs(ctx, buildNumber, jobProject)
 	if err != nil {
 		return shared.ToolResult{}, fmt.Errorf("failed to retrieve logs for build %d: %w", buildNumber, err)
 	}
@@ -465,18 +487,23 @@ func (s *Server) correlateJenkinsBuilds(ctx context.Context, args map[string]int
 		timeRange = int(tr)
 	}
 
+	jobProject := "ocp4-konflux" // default
+	if jp, ok := args["jobProject"].(string); ok && jp != "" {
+		jobProject = jp
+	}
+
 	var jenkinsJob *jenkins.KonfluxJob
 	var err error
 
 	// Get Jenkins job details
 	if buildNumber > 0 {
-		jenkinsJob, err = s.jenkinsClient.GetBuildDetails(ctx, buildNumber)
+		jenkinsJob, err = s.jenkinsClient.GetBuildDetails(ctx, buildNumber, jobProject)
 		if err != nil {
 			return shared.ToolResult{}, fmt.Errorf("failed to get Jenkins build %d: %w", buildNumber, err)
 		}
 	} else {
 		// Find latest build for component
-		jobs, err := s.jenkinsClient.QueryKonfluxBuilds(ctx, componentName, assembly, group, 7)
+		jobs, err := s.jenkinsClient.QueryKonfluxBuilds(ctx, componentName, assembly, group, 7, jobProject)
 		if err != nil {
 			return shared.ToolResult{}, fmt.Errorf("failed to find Jenkins builds for %s: %w", componentName, err)
 		}
